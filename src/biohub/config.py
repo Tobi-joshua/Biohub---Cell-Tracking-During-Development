@@ -1,8 +1,8 @@
-"""Competition configuration and physical scale constants."""
+"""Pipeline configuration and physical scale constants."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Tuple
 
@@ -16,18 +16,17 @@ PIPELINE_VERSION: str = "1.4"
 
 @dataclass
 class Config:
-    """Pipeline hyperparameters. Tuned for metric geometry and CPU runtime."""
+    """Pipeline hyperparameters for detection, tracking, and lineage reconstruction."""
 
-    # Paths (resolved at runtime on Kaggle or locally).
     data_root: Path | None = None
     train_dir: Path | None = None
     test_dir: Path | None = None
-    output_path: Path = field(default_factory=lambda: Path("submission.csv"))
+    output_dir: Path = field(default_factory=lambda: Path("outputs"))
+    output_path: Path = field(default_factory=lambda: Path("outputs/lineage_graph.csv"))
 
-    # Detector backend: "peaks" (classical) or "learned" (v2 stub).
     detector_backend: str = "peaks"
 
-    # --- v1.1 detection ---
+    # Detection
     xy_ds: int = 4
     smooth_sigma: float = 1.0
     min_peak_dist: int = 3
@@ -53,7 +52,7 @@ class Config:
     max_frame_count_add: int = 45
     max_nodes_per_frame: int = 20_000
 
-    # --- v1.2 linking ---
+    # Linking
     max_link_dist_um: float = 11.0
     use_rich_linking: bool = True
     motion_lambda: float = 0.20
@@ -62,7 +61,7 @@ class Config:
     neighborhood_k: int = 4
     neighborhood_radius_um: float = 15.0
 
-    # --- v1.3 divisions ---
+    # Divisions
     detect_divisions: bool = True
     div_parent_dist_um: float = 12.0
     div_sister_dist_um: float = 7.5
@@ -73,13 +72,12 @@ class Config:
 
     prune_isolated_nodes: bool = True
 
-    # --- v1.4 tuning ---
+    # Tuning
     run_hyperparameter_search: bool = False
     hyperparam_sample_limit: int = 3
     hyperparam_frames: int = 4
 
-    # Runtime / EDA switches.
-    submit_mode: bool = True
+    preview_max_frames: int = 20
     eda_sample_limit: int = 4
     calibration_frames: int = 5
     random_state: int = 42
@@ -88,27 +86,26 @@ class Config:
     def scale_array(self) -> np.ndarray:
         return np.array(SCALE, dtype=np.float64)
 
-    def resolve_paths(self) -> None:
-        """Locate competition data directories."""
+    def resolve_paths(self, project_root: Path | None = None) -> None:
+        """Resolve default data directories relative to the project root."""
+        root = project_root or Path.cwd()
         candidates = [
-            Path("/kaggle/input/competitions/biohub-cell-tracking-during-development"),
-            Path("/kaggle/input/biohub-cell-tracking-during-development"),
+            root / "data",
+            root / "data" / "train",
+            root.parent / "data",
         ]
         if self.data_root is None:
             self.data_root = next((p for p in candidates if p.is_dir()), None)
         if self.data_root is not None:
             if self.train_dir is None:
-                train = self.data_root / "train"
+                train = self.data_root / "train" if (self.data_root / "train").is_dir() else self.data_root
                 self.train_dir = train if train.is_dir() else None
             if self.test_dir is None:
                 test = self.data_root / "test"
                 self.test_dir = test if test.is_dir() else None
-
-        if Path("/kaggle/working").exists():
-            self.output_path = Path("/kaggle/working/submission.csv")
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+        if self.output_path.parent == Path("."):
+            self.output_path = self.output_dir / self.output_path.name
 
     def copy_with(self, **kwargs) -> "Config":
-        """Return a shallow copy with selected fields overridden."""
-        from dataclasses import replace
-
         return replace(self, **kwargs)

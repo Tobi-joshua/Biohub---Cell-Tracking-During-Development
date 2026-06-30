@@ -1,0 +1,4 @@
+# Generated outputs
+outputs/
+figures/*.png
+!figures/.gitkeep
