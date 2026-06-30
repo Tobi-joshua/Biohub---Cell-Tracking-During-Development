@@ -36,9 +36,9 @@ class Config:
     refine_radius_z: int = 2
     refine_radius_yx: int = 5
     nms_radius_um: float = 2.65
-    border_z: int = 1
+    border_z: int = 3
     border_yx: int = 2
-    border_keep_quantile: float = 0.70
+    border_keep_quantile: float = 0.80
 
     # Frame-level count stabilizer (guards against threshold glitches).
     max_frame_count_mult: float = 1.70
@@ -50,10 +50,10 @@ class Config:
 
     # Division detection.
     detect_divisions: bool = True
-    div_parent_dist_um: float = 8.75
-    div_sister_dist_um: float = 6.25
+    div_parent_dist_um: float = 12.0
+    div_sister_dist_um: float = 7.0
     div_min_count_gain: int = 1
-    div_require_continued: bool = True
+    div_require_continued: bool = False
 
     # Post-processing.
     prune_isolated_nodes: bool = True

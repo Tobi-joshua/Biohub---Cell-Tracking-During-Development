@@ -154,7 +154,7 @@ cells.append(md("## EDA"))
 cells.append(
     code(
         """
-RUN_EDA = CFG.train_dir is not None and not CFG.submit_mode
+RUN_EDA = CFG.train_dir is not None
 
 if RUN_EDA:
     train_names = list_datasets(CFG.train_dir)
@@ -242,9 +242,9 @@ cells.append(md("## Inference"))
 cells.append(
     code(
         """
-# Calibrate on train when available, even in submit mode (fast, few frames).
+# Calibrate on train when available (uses first few frames; biased toward precision).
 if CFG.train_dir is not None:
-    calibrate_detection(CFG.train_dir, CFG, sample_limit=3, frames_per_sample=3)
+    calibrate_detection(CFG.train_dir, CFG, sample_limit=4, frames_per_sample=5)
     print(f'Calibrated THRESH_REL = {CFG.thresh_rel:.2f}')
 
 t0 = time.time()
