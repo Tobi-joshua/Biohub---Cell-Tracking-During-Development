@@ -110,6 +110,31 @@ def plot_frame_counts(counts: Sequence[int], title: str = "Detections per frame"
     return fig
 
 
+def plot_gt_overlay(
+    vol: np.ndarray,
+    gt_xyz: np.ndarray,
+    pred_xyz: Optional[np.ndarray] = None,
+    t: int = 0,
+    title: str = "",
+) -> plt.Figure:
+    """Overlay ground-truth and optional predictions on a mid-Z slice."""
+    apply_style()
+    z_mid = int(np.median(gt_xyz[:, 0])) if len(gt_xyz) else vol.shape[0] // 2
+    fig, ax = plt.subplots(figsize=(5, 5))
+    ax.imshow(vol[z_mid], cmap="gray")
+    if len(gt_xyz):
+        on = np.abs(gt_xyz[:, 0] - z_mid) <= 1
+        ax.scatter(gt_xyz[on, 2], gt_xyz[on, 1], s=20, c="cyan", label="GT", alpha=0.8)
+    if pred_xyz is not None and len(pred_xyz):
+        on = np.abs(pred_xyz[:, 0] - z_mid) <= 1
+        ax.scatter(pred_xyz[on, 2], pred_xyz[on, 1], s=14, c="lime", label="pred", alpha=0.7)
+    ax.legend(loc="upper right", fontsize=8, frameon=False)
+    ax.set_title(title or f"t={t}, z={z_mid}")
+    ax.axis("off")
+    fig.tight_layout()
+    return fig
+
+
 def plot_track_overlay(
     vol: np.ndarray,
     frame_a: np.ndarray,
