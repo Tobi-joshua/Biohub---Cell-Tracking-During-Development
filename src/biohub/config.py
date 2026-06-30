@@ -99,6 +99,22 @@ class Config:
     def resolve_paths(self, project_root: Path | None = None) -> None:
         """Resolve default data directories relative to the project root."""
         root = project_root or Path.cwd()
+
+        # Hosted notebook runtime (e.g. Kaggle): discover competition input paths.
+        kaggle_candidates = [
+            Path("/kaggle/input/competitions/biohub-cell-tracking-during-development"),
+            Path("/kaggle/input/biohub-cell-tracking-during-development"),
+        ]
+        for comp_root in kaggle_candidates:
+            if (comp_root / "test").is_dir():
+                self.data_root = comp_root
+                self.test_dir = comp_root / "test"
+                self.train_dir = comp_root / "train" if (comp_root / "train").is_dir() else None
+                if Path("/kaggle/working").is_dir():
+                    self.output_path = Path("/kaggle/working/submission.csv")
+                self.output_dir.mkdir(parents=True, exist_ok=True)
+                return
+
         candidates = [
             root / "data",
             root / "data" / "train",

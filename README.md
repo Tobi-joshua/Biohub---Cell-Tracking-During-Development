@@ -186,6 +186,16 @@ Output: `paper/main.pdf`
 
 See `EXPERIMENTS.md` and `CHANGELOG.md` for v1.5 improvement notes (baseline public score **0.659**).
 
+### Batch submission notebook (Kaggle / offline)
+
+```bash
+python scripts/build_notebook.py
+```
+
+Writes `notebooks/biohub-cell-tracking-submission.ipynb` — a self-contained notebook with all `src/biohub` pipeline code inlined. See `notebooks/README.md` for upload and submit steps.
+
+---
+
 **Voxel spacing:** Z = 1.625 µm, Y = X = 0.40625 µm  
 **Volume format:** `(T, Z, Y, X)` uint16 Zarr, one frame per chunk
 
