@@ -8,7 +8,8 @@ All notable changes to **Biohub Cell Lineage Tracker** are documented here.
 - **Default submission preset reverts to v4 baseline** (leaderboard 0.659)
 - v1.5 features (`gap_close`, `soft prune`, `div symmetry`, adaptive retry) **default OFF**
 - `Config.competition_v4_preset()` and `use_competition_preset=True` in `build_submission()`
-- Notebook v6 uses v4 preset; see `EXPERIMENTS.md` for V4 vs V5 analysis
+- Notebook v6/v7 uses v4 preset; see `EXPERIMENTS.md` for V4 vs V5 analysis
+- **V7 Kaggle submission confirmed 0.659** — regression recovery validated
 
 ### Added
 - `scripts/run_diagnostics.py` — local diagnostic plots (v4 vs v5 preset compare)

@@ -4,7 +4,7 @@
 **Author:** Engineering-guided optimization (Track A — competition)  
 **Baseline:** V4 public score **0.659** (pipeline v1.4)  
 **Regression:** V5 public score **0.648** (pipeline v1.5)  
-**Target:** V6 recovers v4 behavior; tune one knob at a time afterward
+**Validated:** V7 public score **0.659** (pipeline v1.6 v4 preset) — Sprint 2 hypothesis confirmed
 
 ---
 
