@@ -9,7 +9,7 @@ Author: **Tobi-Joshua Samuel**
 ```
 app.py                 Streamlit application entry point
 app/ui.py              UI helpers
-src/biohub/            Core pipeline (detection, tracking, analysis, export)
+src/biohub/dataset_catalog.py   Local Biohub dataset discovery (train/test, zarr/geff)
 src/data/              Data loader re-exports
 src/detection/         Detection re-exports
 src/tracking/          Tracking re-exports
@@ -34,17 +34,37 @@ pip install -r requirements.txt
 ## Run the Streamlit app
 
 ```bash
+pip install -r requirements.txt
 streamlit run app.py
 ```
 
-Open the URL shown in the terminal (default `http://localhost:8501`).
+### Local Biohub dataset (primary workflow)
 
-**Data sources**
-- **Bundled sample** — synthetic `(T,Z,Y,X)` volume (no external files required)
+1. Download the **Biohub Cell Tracking** dataset to your machine.
+2. In the sidebar, set **Dataset root directory** to the folder that contains `train/` and/or `test/`.
+3. Click **Scan dataset** — the app discovers all `.zarr` volumes and paired `.geff` annotations.
+4. Select a volume from the dropdown and click **Load volume**.
+5. Run the pipeline and export results.
+
+Expected layout:
+
+```
+your-dataset-root/
+  train/
+    <sample_id>.zarr
+    <sample_id>.geff
+  test/
+    <sample_id>.zarr
+```
+
+The app also accepts a split directory (`.../train`) or a flat folder of `.zarr` files.
+
+### Other data sources
+
+- **Synthetic demo** — bundled fallback when no local data is available
 - **Upload .npy** — NumPy array with shape `(T, Z, Y, X)`
-- **Local .zarr** — path to a Zarr dataset directory
 
-Use the **Pipeline** tab to run analysis, then inspect **Detection**, **Lineage**, and **Exports**.
+No remote download or API credentials are required.
 
 ## Generate figures for the paper
 
