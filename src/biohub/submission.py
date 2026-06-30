@@ -67,8 +67,9 @@ def calibrate_detection(
     if not names:
         return cfg.thresh_rel
 
-    grid = [0.22, 0.26, 0.30, 0.34, 0.38]
-    best_thresh, best_err = cfg.thresh_rel, np.inf
+    grid = [0.26, 0.30, 0.34, 0.38]
+    default_thresh = cfg.thresh_rel
+    best_thresh, best_err = default_thresh, np.inf
 
     for thresh in grid:
         cfg.thresh_rel = thresh
@@ -79,15 +80,20 @@ def calibrate_detection(
                 continue
             zarr_path = train_dir / f"{name}.zarr"
             shape, dtype = read_zarr_meta(zarr_path)
+            n_frames = min(frames_per_sample, shape[0])
             n_pred = 0
-            for t in range(min(frames_per_sample, shape[0])):
+            for t in range(n_frames):
                 vol = load_volume(zarr_path, t, shape, dtype)
                 coords, _ = detect_cells(vol, cfg)
                 n_pred += len(coords)
-            pred_total = n_pred * (shape[0] / max(min(frames_per_sample, shape[0]), 1))
-            ratios.append(pred_total / est)
+            avg_per_frame = n_pred / max(n_frames, 1)
+            target_per_frame = est / max(shape[0], 1)
+            ratios.append(avg_per_frame / max(target_per_frame, 1e-6))
         if ratios:
-            err = abs(float(np.median(ratios)) - 1.0)
+            ratio = float(np.median(ratios))
+            err = (ratio - 1.0) ** 2
+            if ratio > 1.0:
+                err += 0.75 * (ratio - 1.0) ** 2
             if err < best_err:
                 best_err, best_thresh = err, thresh
 
