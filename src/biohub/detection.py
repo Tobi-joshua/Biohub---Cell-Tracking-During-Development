@@ -45,12 +45,13 @@ def robust_threshold(
 
 
 def adaptive_thresh_rel(cfg: Config, prev_count: Optional[int], n_detected: int) -> float:
-    """Tighten threshold when a frame suddenly exceeds the previous count."""
+    """Raise threshold when the current frame exceeds the adaptive count cap."""
     rel = cfg.thresh_rel
     if not cfg.use_adaptive_frame_threshold or prev_count is None or prev_count < 8:
         return rel
-    if n_detected > int(prev_count * cfg.max_frame_count_mult):
-        rel += cfg.adaptive_overcount_penalty
+    cap = int(prev_count * cfg.max_frame_count_mult + cfg.max_frame_count_add)
+    if n_detected > cap:
+        rel = min(rel + cfg.adaptive_overcount_penalty, 0.42)
     return rel
 
 
@@ -175,21 +176,15 @@ def _merge_peak_sets(
     return coords, scores
 
 
-def detect_cells(
+def _extract_from_sm(
+    sm: np.ndarray,
     vol: np.ndarray,
     cfg: Config,
-    prev_count: Optional[int] = None,
+    thresh_rel: float,
+    prev_count: Optional[int],
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """
-    Detect cell centroids in one 3D frame.
-
-    Returns integer (z, y, x) coordinates, detector scores, and sampled intensities.
-    """
+    """Run peak finding through NMS on a pre-smoothed downsampled volume."""
     z_dim, y_dim, x_dim = vol.shape
-    ds = block_mean_xy(vol, cfg.xy_ds)
-    sm = gaussian_filter(ds, sigma=cfg.smooth_sigma, mode="nearest")
-
-    thresh_rel = adaptive_thresh_rel(cfg, prev_count, n_detected=0)
     threshold_abs, bg, dyn = robust_threshold(sm, cfg, thresh_rel=thresh_rel)
 
     coords_primary = _find_peaks(sm, threshold_abs, cfg.min_peak_dist)
@@ -224,7 +219,6 @@ def detect_cells(
     coords = np.vstack(refined)
     scores = np.array(refined_scores, dtype=np.float32)
 
-    # Hard minimum Z for weak detections (reduces bottom-slice artifacts).
     if cfg.min_z_hard > 0 and len(coords):
         z_floor_score = float(np.quantile(scores, 0.85)) if len(scores) > 8 else np.inf
         keep = (coords[:, 0] >= cfg.min_z_hard) | (scores >= z_floor_score)
@@ -262,4 +256,29 @@ def detect_cells(
     coords[:, 1] = np.clip(coords[:, 1], 0, y_dim - 1)
     coords[:, 2] = np.clip(coords[:, 2], 0, x_dim - 1)
     intensities = sample_intensity(vol, coords)
+    return coords, scores, intensities
+
+
+def detect_cells(
+    vol: np.ndarray,
+    cfg: Config,
+    prev_count: Optional[int] = None,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Detect cell centroids in one 3D frame.
+
+    Returns integer (z, y, x) coordinates, detector scores, and sampled intensities.
+    """
+    ds = block_mean_xy(vol, cfg.xy_ds)
+    sm = gaussian_filter(ds, sigma=cfg.smooth_sigma, mode="nearest")
+
+    thresh_rel = cfg.thresh_rel
+    coords, scores, intensities = _extract_from_sm(sm, vol, cfg, thresh_rel, prev_count)
+
+    # Adaptive retry: tighten threshold when this frame is over the adaptive cap.
+    if cfg.use_adaptive_frame_threshold and prev_count is not None and prev_count >= 8:
+        tighter = adaptive_thresh_rel(cfg, prev_count, len(coords))
+        if tighter > thresh_rel + 1e-6:
+            coords, scores, intensities = _extract_from_sm(sm, vol, cfg, tighter, prev_count)
+
     return coords, scores, intensities

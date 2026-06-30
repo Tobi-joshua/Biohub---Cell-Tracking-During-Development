@@ -1,9 +1,8 @@
-"""Systematic hyperparameter search on training data (v1.4)."""
+"""Systematic hyperparameter search on training data (v1.5)."""
 
 from __future__ import annotations
 
-import copy
-from dataclasses import fields
+import time
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -161,10 +160,11 @@ def hyperparameter_search(
         return cfg, pd.DataFrame()
 
     grid = {
-        "thresh_rel": [0.26, 0.30, 0.34],
-        "max_link_dist_um": [10.5, 11.0, 12.0],
+        "thresh_rel": [0.26, 0.28, 0.30, 0.32],
+        "max_link_dist_um": [10.0, 11.0, 12.0],
         "div_parent_dist_um": [11.0, 12.0],
         "div_sister_dist_um": [7.0, 7.5, 8.0],
+        "nms_radius_um": [2.5, 2.65],
     }
 
     rows: List[dict] = []
@@ -176,6 +176,7 @@ def hyperparameter_search(
         "max_link_dist_um": cfg.max_link_dist_um,
         "div_parent_dist_um": cfg.div_parent_dist_um,
         "div_sister_dist_um": cfg.div_sister_dist_um,
+        "nms_radius_um": cfg.nms_radius_um,
     }
 
     def _iter_grid(d, keys, i=0, cur=None):
@@ -189,10 +190,17 @@ def hyperparameter_search(
             yield from _iter_grid(d, keys, i + 1, cur)
 
     for params in _iter_grid(grid, list(grid.keys())):
+        t0 = time.time()
         trial = cfg.copy_with(**params)
         scores = [score_config_on_sample(train_dir, n, trial, frames) for n in names]
+        runtime_s = time.time() - t0
         mean_score = float(np.nanmean([s["score"] for s in scores]))
-        row = {**params, "mean_score": mean_score}
+        row = {
+            **params,
+            "mean_score": mean_score,
+            "runtime_s": round(runtime_s, 2),
+            "n_samples": len(names),
+        }
         row.update({f"{k}_{i}": s[k] for i, s in enumerate(scores) for k in ("recall", "edge_proxy")})
         rows.append(row)
         if mean_score > best_score:

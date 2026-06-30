@@ -13,7 +13,7 @@ Interactive pipeline and Streamlit application for **3D time-lapse cell detectio
 ## Features
 
 - Local **Zarr / GEFF** dataset browser (train and test splits)
-- Detection, Hungarian linking, and division inference (pipeline v1.4)
+- Detection, Hungarian linking, and division inference (pipeline v1.5)
 - Interactive viewers: volume slices, detection overlays, inter-frame links
 - Publication-style plots: montage, lineage timeline, scale bars
 - GIF time-lapse export for presentations and papers
@@ -178,8 +178,13 @@ Output: `paper/main.pdf`
 |-------|--------|
 | Detection | Full-Z + XY block-mean, local maxima, dense-cluster pass, centroid refinement |
 | Linking | Hungarian assignment with distance, motion, intensity, and neighborhood costs |
-| Divisions | Sister-distance and midpoint-gated mitosis inference |
+| Divisions | Sister-distance and midpoint-gated mitosis inference with symmetry scoring |
+| Post-process | Gap closing (1-frame), soft orphan pruning, optional isolated-node removal |
+| Tuning | `scripts/run_hyperparameter_search.py` → `results/hyperparameter_search.csv` |
+| Validation | `scripts/run_validation.py` → `results/validation_*.csv` |
 | Export | CSV lineage table and JSON graph |
+
+See `EXPERIMENTS.md` and `CHANGELOG.md` for v1.5 improvement notes (baseline public score **0.659**).
 
 **Voxel spacing:** Z = 1.625 µm, Y = X = 0.40625 µm  
 **Volume format:** `(T, Z, Y, X)` uint16 Zarr, one frame per chunk
