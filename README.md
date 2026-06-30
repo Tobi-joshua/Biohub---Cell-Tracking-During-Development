@@ -1,35 +1,30 @@
 # Biohub - Cell Tracking During Development
 
-Kaggle competition workspace for building a submission notebook for **Biohub - Cell Tracking During Development**.
+Kaggle competition workspace. **Current public score: 0.607** (classical baseline).
 
-## Goal
+## Quick start
 
-Detect cells in 3D time-lapse microscopy volumes, track them across frames, and reconstruct cell lineage graphs with correct division events.
+1. Open `notebooks/biohub-cell-tracking-submission.ipynb` on Kaggle
+2. Add competition data, run all cells
+3. Submit `submission.csv`
 
-## Repository layout
+## Pipeline versions
 
-| Path | Purpose |
-|------|---------|
-| `notebooks/biohub-cell-tracking-submission.ipynb` | **Final Kaggle submission notebook** |
-| `src/biohub/` | Reusable pipeline modules (data, detection, tracking, submission) |
-| `scripts/build_notebook.py` | Regenerate notebook from `src/biohub/` |
-| `starter_notebooks/` | Competition starter notebooks (reference only) |
-| `COMPETITION_RULES.md` | Rules summary |
-| `DATA_NOTES.md` | Data format notes |
+| Version | Module | What changed |
+|---------|--------|--------------|
+| **v1.1** | `detection.py` | Dense-cluster second peak pass, adaptive frame threshold, `min_z_hard`, intensity sampling |
+| **v1.2** | `tracking.py` | Link cost = distance + motion + intensity + kNN neighborhood signature |
+| **v1.3** | `tracking.py` | Division midpoint gate, `div_min_count_gain=0`, wider sister distance |
+| **v1.4** | `tuning.py` | Grid search on train recall/edge/division proxies |
+| **v2.0** | `detector.py` | `LearnedDetector` scaffold for Cellpose / StarDist / 3D U-Net weights |
 
-## Pipeline summary
+## Layout
 
-1. **Detection** — full-Z + XY block-mean (÷4), Gaussian smooth, Otsu/relative threshold, local maxima, intensity-weighted centroid refinement, physical NMS
-2. **Linking** — Hungarian assignment on physical distances (≤11 µm gate)
-3. **Divisions** — second daughter for parents with one child, sister-distance and continuation checks
-4. **Pruning** — remove isolated single-frame detections
-5. **Calibration** — sweep `thresh_rel` on train `estimated_number_of_nodes`
-
-## Notebook requirements
-
-- Must run on Kaggle (no internet)
-- Output: `submission.csv`
-- Runtime target: under 12 hours (typically ~1 min on CPU for public test split)
+```
+notebooks/biohub-cell-tracking-submission.ipynb   # Kaggle notebook
+src/biohub/                                         # pipeline source
+scripts/build_notebook.py                           # regenerate notebook
+```
 
 ## Regenerate notebook
 
@@ -37,8 +32,24 @@ Detect cells in 3D time-lapse microscopy volumes, track them across frames, and 
 python scripts/build_notebook.py
 ```
 
+## Tuning on Kaggle
+
+```python
+CFG.run_hyperparameter_search = True   # ~5-10 min extra on train
+CFG.run_hyperparameter_search = False  # fast submit (~2 min)
+```
+
+## v2.0 learned detector (next)
+
+Attach public weights as a Kaggle dataset, subclass `LearnedDetector`, set:
+
+```python
+CFG.detector_backend = "learned"
+```
+
+Keep the tracking module unchanged.
+
 ## References
 
 - van der Walt et al., scikit-image, PeerJ 2014
 - Kuhn, The Hungarian Method, Naval Research Logistics 1955
-- Competition starter notebooks in `starter_notebooks/`
