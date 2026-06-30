@@ -125,12 +125,25 @@ Writes to `figures/`:
 - `pipeline_overview.png`
 - `sample_volume.png`
 - `detection_overlay.png`
+- `track_links.png`
+- `temporal_montage.png`
 - `frame_counts.png`
 - `lineage_graph.png`
 - `lineage_timeline.png`
-- `temporal_montage.png`
 
-For the UI figure, capture a screenshot after running the app and save as `figures/ui_screenshot.png`.
+### Manual UI screenshots
+
+Capture from the Streamlit app and save to `figures/` (see `figures/SCREENSHOTS.md`):
+
+| File | What to capture |
+|------|-----------------|
+| `ui_home.png` | Home page with segmented navigation bar |
+| `ui_pipeline.png` | Pipeline tab after a successful run |
+| `ui_detection.png` | Detection overlays, montage, animation |
+| `ui_lineage.png` | Lineage graph and timeline |
+| `ui_dataset.png` | *(optional)* local dataset catalog |
+
+The paper compiles without these files (placeholder boxes appear until you add them).
 
 ---
 
