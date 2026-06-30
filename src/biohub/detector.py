@@ -1,4 +1,4 @@
-"""Detector backends (v2.0 scaffold)."""
+"""Detector backends."""
 
 from __future__ import annotations
 
@@ -7,23 +7,21 @@ from typing import Optional, Protocol, Tuple
 import numpy as np
 
 from biohub.config import Config
+from biohub.detection import detect_cells
 
 
 class CellDetector(Protocol):
-    """Interface for swappable detection backends."""
-
     def detect(
         self,
         vol: np.ndarray,
         cfg: Config,
         prev_count: Optional[int] = None,
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-        """Return coords (N,3), scores (N,), intensities (N,)."""
         ...
 
 
 class PeakDetector:
-    """Classical anisotropy-aware peak detector (default, v1.x)."""
+    """Classical anisotropy-aware peak detector."""
 
     def detect(
         self,
@@ -36,10 +34,9 @@ class PeakDetector:
 
 class LearnedDetector:
     """
-    Placeholder for v2.0 learned backends (Cellpose, StarDist, 3D U-Net).
+    Scaffold for learned backends (Cellpose, StarDist, 3D U-Net).
 
-    Attach pretrained weights as a Kaggle dataset and implement `predict`
-    to return centroid coordinates in (z, y, x) voxel space.
+    Provide a `weights_path` to a local checkpoint and override `predict`.
     """
 
     def __init__(self, weights_path: str | None = None) -> None:
@@ -54,8 +51,7 @@ class LearnedDetector:
         if self.weights_path is None:
             return detect_cells(vol, cfg, prev_count=prev_count)
         raise NotImplementedError(
-            "LearnedDetector is a scaffold. Subclass and load Cellpose/StarDist weights "
-            "from a Kaggle dataset, then map instance centroids to (z,y,x)."
+            "Load pretrained weights and map instance centroids to (z, y, x)."
         )
 
 

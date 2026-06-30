@@ -1,55 +1,109 @@
-# Biohub - Cell Tracking During Development
+# Biohub Cell Lineage Tracker
 
-Kaggle competition workspace. **Current public score: 0.607** (classical baseline).
+Open pipeline and interactive application for **3D time-lapse cell detection, tracking, and lineage reconstruction** in fluorescence microscopy volumes.
 
-## Quick start
+Author: **Tobi-Joshua Samuel**
 
-1. Open `notebooks/biohub-cell-tracking-submission.ipynb` on Kaggle
-2. Add competition data, run all cells
-3. Submit `submission.csv`
-
-## Pipeline versions
-
-| Version | Module | What changed |
-|---------|--------|--------------|
-| **v1.1** | `detection.py` | Dense-cluster second peak pass, adaptive frame threshold, `min_z_hard`, intensity sampling |
-| **v1.2** | `tracking.py` | Link cost = distance + motion + intensity + kNN neighborhood signature |
-| **v1.3** | `tracking.py` | Division midpoint gate, `div_min_count_gain=0`, wider sister distance |
-| **v1.4** | `tuning.py` | Grid search on train recall/edge/division proxies |
-| **v2.0** | `detector.py` | `LearnedDetector` scaffold for Cellpose / StarDist / 3D U-Net weights |
-
-## Layout
+## Repository layout
 
 ```
-notebooks/biohub-cell-tracking-submission.ipynb   # Kaggle notebook
-src/biohub/                                         # pipeline source
-scripts/build_notebook.py                           # regenerate notebook
+app.py                 Streamlit application entry point
+app/ui.py              UI helpers
+src/biohub/            Core pipeline (detection, tracking, analysis, export)
+src/data/              Data loader re-exports
+src/detection/         Detection re-exports
+src/tracking/          Tracking re-exports
+src/visualization/     Plotting utilities
+src/export/            CSV / JSON export
+scripts/generate_figures.py   Publication figure batch script
+paper/main.tex         IEEE-style manuscript
+paper/references.bib   Bibliography
+figures/               Generated and manual figures
+data/sample/           Bundled synthetic sample (created on first run)
+outputs/               Exported graphs from the app
 ```
 
-## Regenerate notebook
+## Install
 
 ```bash
-python scripts/build_notebook.py
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
 ```
 
-## Tuning on Kaggle
+## Run the Streamlit app
 
-```python
-CFG.run_hyperparameter_search = True   # ~5-10 min extra on train
-CFG.run_hyperparameter_search = False  # fast submit (~2 min)
+```bash
+streamlit run app.py
 ```
 
-## v2.0 learned detector (next)
+Open the URL shown in the terminal (default `http://localhost:8501`).
 
-Attach public weights as a Kaggle dataset, subclass `LearnedDetector`, set:
+**Data sources**
+- **Bundled sample** — synthetic `(T,Z,Y,X)` volume (no external files required)
+- **Upload .npy** — NumPy array with shape `(T, Z, Y, X)`
+- **Local .zarr** — path to a Zarr dataset directory
 
-```python
-CFG.detector_backend = "learned"
+Use the **Pipeline** tab to run analysis, then inspect **Detection**, **Lineage**, and **Exports**.
+
+## Generate figures for the paper
+
+```bash
+python scripts/generate_figures.py
 ```
 
-Keep the tracking module unchanged.
+This writes to `figures/`:
+- `pipeline_overview.png`
+- `sample_volume.png`
+- `detection_overlay.png`
+- `frame_counts.png`
+- `lineage_graph.png`
+
+### Manual screenshot for the paper
+
+1. Run `streamlit run app.py`
+2. Open the **Pipeline** or **Detection** tab after processing
+3. Capture a screenshot
+4. Save as `figures/ui_screenshot.png`
+5. Uncomment the UI figure block in `paper/main.tex`
+
+## Compile the paper (PDF)
+
+Requires a LaTeX distribution with `IEEEtran`.
+
+```bash
+python scripts/generate_figures.py
+cd paper
+pdflatex main
+bibtex main
+pdflatex main
+pdflatex main
+```
+
+Output: `paper/main.pdf`
+
+## Pipeline overview
+
+| Stage | Method |
+|-------|--------|
+| Detection | Full-Z + XY block-mean, local maxima, dense-cluster pass, centroid refinement |
+| Linking | Hungarian assignment with distance, motion, intensity, and neighborhood costs |
+| Divisions | Sister-distance and midpoint-gated mitosis inference |
+| Export | CSV lineage table and JSON graph |
+
+## Data format
+
+Volumes: `(T, Z, Y, X)` uint16, Zarr chunks one frame at a time.  
+Voxel spacing: Z = 1.625 µm, Y = X = 0.40625 µm.  
+Optional GEFF graph annotations for training / validation.
+
+See `DATA_NOTES.md` for format details.
 
 ## References
 
-- van der Walt et al., scikit-image, PeerJ 2014
-- Kuhn, The Hungarian Method, Naval Research Logistics 1955
+- van der Walt et al., scikit-image, PeerJ 2014  
+- Kuhn, The Hungarian Method, Naval Research Logistics 1955  
+- Tinevez et al., TrackMate, Methods 2017  
+- Stringer et al., Cellpose, Nature Methods 2021  
+
+Full bibliography in `paper/references.bib`.
