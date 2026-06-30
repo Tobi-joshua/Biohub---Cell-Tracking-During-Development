@@ -14,7 +14,7 @@ Interactive pipeline and Streamlit application for **3D time-lapse cell detectio
 ## Features
 
 - Local **Zarr / GEFF** dataset browser (train and test splits)
-- Detection, Hungarian linking, and division inference (pipeline v1.5)
+- Detection, Hungarian linking, and division inference (pipeline v1.6 competition preset; v1.5 features opt-in)
 - Interactive viewers: volume slices, detection overlays, inter-frame links
 - Publication-style plots: montage, lineage timeline, scale bars
 - GIF time-lapse export for presentations and papers

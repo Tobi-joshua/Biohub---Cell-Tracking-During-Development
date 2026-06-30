@@ -2,16 +2,23 @@
 
 Engineering notes for pipeline tuning and evaluation. For end users, see `README.md`.
 
+## Sprint 2 (competition track)
+
+See **`EXPERIMENTS.md`** for V4/V5 regression analysis and V6 submission workflow.  
+Full Sprint 2 report: **`docs/SPRINT2_ENGINEERING_REPORT.md`**
+
+```bash
+python scripts/build_notebook.py          # v6 notebook, v4 preset
+python scripts/run_diagnostics.py --synthetic --preset v4
+python scripts/run_hyperparameter_search.py --train-dir /path/to/train
+```
+
 ## Pipeline versions
 
 | Version | Highlights |
 |---------|------------|
-| v1.0 | Publication release — app, paper, batch export, validation |
-| v1.5 | Gap closing, soft prune, adaptive threshold fix, tuning scripts |
-
-## Evaluation baseline
-
-Internal batch benchmark reference score: **0.659** (sparse-label proxy on development data).
+| v1.6 | Competition preset = v4 baseline; v1.5 experiments opt-in |
+| v1.0 | Publication release — app, paper, batch export |
 
 ## Tuning
 
