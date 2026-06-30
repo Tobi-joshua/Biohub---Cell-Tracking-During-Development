@@ -19,7 +19,7 @@ from biohub.data import (
     read_zarr_meta,
 )
 from biohub.detector import get_detector
-from biohub.tracking import count_divisions, link_frames, prune_isolated_nodes
+from biohub.tracking import close_frame_gaps, count_divisions, link_frames, prune_isolated_nodes
 from biohub.tuning import hyperparameter_search
 
 
@@ -98,7 +98,7 @@ def calibrate_detection(
 
 
 def apply_train_tuning(cfg: Config) -> Tuple[Config, Optional[pd.DataFrame]]:
-    """Run v1.4 hyperparameter search when enabled and train data exists."""
+    """Run v1.5 hyperparameter search when enabled and train data exists."""
     if not cfg.run_hyperparameter_search or cfg.train_dir is None:
         return cfg, None
     print(f"Running hyperparameter search (v{PIPELINE_VERSION})...")
@@ -109,7 +109,11 @@ def apply_train_tuning(cfg: Config) -> Tuple[Config, Optional[pd.DataFrame]]:
         frames=cfg.hyperparam_frames,
     )
     if len(table):
-        print(table.head(3).to_string(index=False))
+        out_path = Path(cfg.hyperparam_results_path)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        table.to_csv(out_path, index=False)
+        print(f"Wrote hyperparameter results to {out_path}")
+        print(table.head(5).to_string(index=False))
     return best, table
 
 
@@ -187,12 +191,16 @@ def process_dataset(
                     position_by_id[u] - position_by_id[s]
                 ) * cfg.scale_array
 
+    pair_edges = [(int(e["source_id"]), int(e["target_id"])) for e in edge_rows]
+    for s, u in close_frame_gaps(frame_ids, frame_centroids, frame_intensities, pair_edges, cfg):
+        edge_rows.append(_edge_row(name, s, u))
+
     nodes_before = len(node_rows)
     edges_before = len(edge_rows)
     div_before = count_divisions(edge_rows)
 
     if cfg.prune_isolated_nodes:
-        node_rows, edge_rows, prune_stats = prune_isolated_nodes(node_rows, edge_rows)
+        node_rows, edge_rows, prune_stats = prune_isolated_nodes(node_rows, edge_rows, cfg)
     else:
         prune_stats = {"removed_isolated": 0}
 

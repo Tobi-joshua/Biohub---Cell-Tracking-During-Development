@@ -11,7 +11,7 @@ import numpy as np
 # Physical voxel spacing (Z, Y, X) in micrometers.
 SCALE: Tuple[float, float, float] = (1.625, 0.40625, 0.40625)
 MATCH_GATE_UM: float = 7.0
-PIPELINE_VERSION: str = "1.4"
+PIPELINE_VERSION: str = "1.5"
 
 
 @dataclass
@@ -71,11 +71,21 @@ class Config:
     div_midpoint_dist_um: float = 9.0
 
     prune_isolated_nodes: bool = True
+    prune_soft_neighbors: bool = True
+    prune_neighbor_dist_um: float = 9.0
+
+    # Gap closing (link across one missed frame)
+    gap_close_enabled: bool = True
+    gap_close_dist_um: float = 15.0
+
+    # Division scoring
+    div_symmetry_weight: float = 0.35
 
     # Tuning
     run_hyperparameter_search: bool = False
     hyperparam_sample_limit: int = 3
     hyperparam_frames: int = 4
+    hyperparam_results_path: Path = field(default_factory=lambda: Path("results/hyperparameter_search.csv"))
 
     preview_max_frames: int = 20
     eda_sample_limit: int = 4
