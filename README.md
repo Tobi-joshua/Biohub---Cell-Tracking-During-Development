@@ -4,6 +4,10 @@ Interactive pipeline and Streamlit application for **3D time-lapse cell detectio
 
 **Author:** Tobi-Joshua Samuel
 
+**Live app:** [biohub-cell-lineage-tracker.streamlit.app](https://bioapp---cell-tracking-during-development-ezpjtah7icn2tfr8tie4.streamlit.app/) — no install required; try the **Synthetic demo** in the sidebar.
+
+**Source code:** [github.com/Tobi-joshua/Biohub---Cell-Tracking-During-Development](https://github.com/Tobi-joshua/Biohub---Cell-Tracking-During-Development)
+
 ---
 
 ## Features
@@ -32,6 +36,10 @@ streamlit run app.py
 ```
 
 Open `http://localhost:8501` in your browser.
+
+Or use the public deployment (same app, no local setup):
+
+https://bioapp---cell-tracking-during-development-ezpjtah7icn2tfr8tie4.streamlit.app/
 
 ---
 
@@ -177,6 +185,20 @@ Output: `paper/main.pdf`
 **Volume format:** `(T, Z, Y, X)` uint16 Zarr, one frame per chunk
 
 See `DATA_NOTES.md` for format details.
+
+---
+
+## Deploying the app (Streamlit Community Cloud)
+
+The public instance runs from this repository on [Streamlit Community Cloud](https://streamlit.io/cloud).
+
+| Setting | Value |
+|---------|-------|
+| Main file | `app.py` |
+| Python | 3.10+ |
+| Requirements | `requirements.txt` |
+
+Anyone can open the live app without cloning the repo. For local datasets, users still need to download volumes separately and point the sidebar at their machine — the cloud instance supports **Synthetic demo** and **Upload .npy** out of the box.
 
 ---
 
