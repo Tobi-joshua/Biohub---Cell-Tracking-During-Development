@@ -251,7 +251,7 @@ def build_submission(cfg: Optional[Config] = None) -> Tuple[pd.DataFrame, pd.Dat
 
 
 def validate_submission(sub: pd.DataFrame, test_dir: Path) -> None:
-    """Assert submission format and graph consistency."""
+    """Assert lineage CSV format and graph consistency."""
     expected = ["dataset", "row_type", "node_id", "t", "z", "y", "x", "source_id", "target_id"]
     assert list(sub.columns) == expected, f"Wrong columns: {list(sub.columns)}"
     assert len(sub) > 0, "Empty submission"
