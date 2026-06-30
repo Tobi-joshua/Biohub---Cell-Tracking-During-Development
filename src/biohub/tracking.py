@@ -146,6 +146,12 @@ def link_frames(
                     if mid_dist > cfg.div_midpoint_dist_um:
                         continue
                 score = float(dist[p, c] + 0.25 * sister_dist)
+                if cfg.div_symmetry_weight > 0:
+                    d_parent_sister = float(np.linalg.norm(prev_phys[p] - curr_phys[sister]))
+                    d_parent_child = float(dist[p, c])
+                    if d_parent_sister > 1e-6:
+                        asym = abs(d_parent_child - d_parent_sister) / d_parent_sister
+                        score += cfg.div_symmetry_weight * asym
                 if score < best_score:
                     best_p, best_score = p, score
             if best_p is not None:
@@ -156,16 +162,113 @@ def link_frames(
     return edges
 
 
+def close_frame_gaps(
+    frame_ids: List[List[int]],
+    frame_centroids: List[np.ndarray],
+    frame_intensities: List[np.ndarray],
+    existing_edges: List[Tuple[int, int]],
+    cfg: Config,
+) -> List[Tuple[int, int]]:
+    """
+    Link detections across one skipped frame (t-2 -> t) for unmatched nodes.
+
+    Recovers short occlusions without full multi-frame optimization.
+    """
+    if not cfg.gap_close_enabled or len(frame_ids) < 3:
+        return []
+
+    scale = cfg.scale_array
+    gap_edges: List[Tuple[int, int]] = []
+    used_targets: set[int] = set()
+    for e in existing_edges:
+        used_targets.add(int(e[1]))
+
+    for t in range(2, len(frame_ids)):
+        prev2_ids = frame_ids[t - 2]
+        prev1_ids = set(frame_ids[t - 1])
+        curr_ids = frame_ids[t]
+        if not prev2_ids or not curr_ids:
+            continue
+
+        linked_from_prev2 = {
+            int(s)
+            for s, u in existing_edges + gap_edges
+            if int(s) in prev2_ids and int(u) in prev1_ids
+        }
+        linked_to_curr = {
+            int(u)
+            for s, u in existing_edges + gap_edges
+            if int(u) in curr_ids and int(s) in prev1_ids
+        }
+
+        unmatched_prev_idx = [i for i, nid in enumerate(prev2_ids) if int(nid) not in linked_from_prev2]
+        unmatched_curr_idx = [
+            j
+            for j, nid in enumerate(curr_ids)
+            if int(nid) not in linked_to_curr and int(nid) not in used_targets
+        ]
+        if not unmatched_prev_idx or not unmatched_curr_idx:
+            continue
+
+        prev_xyz = frame_centroids[t - 2][unmatched_prev_idx]
+        curr_xyz = frame_centroids[t][unmatched_curr_idx]
+        prev_int = frame_intensities[t - 2][unmatched_prev_idx]
+        curr_int = frame_intensities[t][unmatched_curr_idx]
+        prev_node_ids = [prev2_ids[i] for i in unmatched_prev_idx]
+        curr_node_ids = [curr_ids[j] for j in unmatched_curr_idx]
+
+        trial_cfg = cfg.copy_with(max_link_dist_um=cfg.gap_close_dist_um)
+        links = link_frames(
+            prev_node_ids,
+            prev_xyz,
+            curr_node_ids,
+            curr_xyz,
+            trial_cfg,
+            prev_intensity=prev_int,
+            curr_intensity=curr_int,
+            prev_velocity=None,
+        )
+        for s, u in links:
+            gap_edges.append((int(s), int(u)))
+            used_targets.add(int(u))
+
+    return gap_edges
+
+
 def prune_isolated_nodes(
     node_rows: List[dict],
     edge_rows: List[dict],
+    cfg: Optional[Config] = None,
 ) -> Tuple[List[dict], List[dict], Dict[str, int]]:
     """Remove detections that never participate in an edge."""
     incident = set()
     for e in edge_rows:
         incident.add(int(e["source_id"]))
         incident.add(int(e["target_id"]))
-    kept_nodes = [r for r in node_rows if int(r["node_id"]) in incident]
+
+    if cfg is not None and cfg.prune_soft_neighbors:
+        by_time: Dict[int, List[dict]] = defaultdict(list)
+        for r in node_rows:
+            by_time[int(r["t"])].append(r)
+        scale = cfg.scale_array
+        gate = cfg.prune_neighbor_dist_um
+
+        def _nearby(r: dict) -> bool:
+            if int(r["node_id"]) in incident:
+                return True
+            t = int(r["t"])
+            pos = np.array([r["z"], r["y"], r["x"]], dtype=np.float64) * scale
+            for dt in (-1, 1):
+                for other in by_time.get(t + dt, []):
+                    op = np.array([other["z"], other["y"], other["x"]], dtype=np.float64) * scale
+                    if float(np.linalg.norm(pos - op)) <= gate:
+                        return True
+            return False
+
+        kept_nodes = [r for r in node_rows if _nearby(r)]
+    else:
+        kept_nodes = [r for r in node_rows if int(r["node_id"]) in incident]
+
     kept_ids = {int(r["node_id"]) for r in kept_nodes}
     kept_edges = [
         e

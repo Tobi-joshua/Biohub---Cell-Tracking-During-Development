@@ -13,7 +13,7 @@ import pandas as pd
 from biohub.config import Config
 from biohub.data import load_volume, read_zarr_meta
 from biohub.detector import get_detector
-from biohub.tracking import count_divisions, link_frames, prune_isolated_nodes
+from biohub.tracking import close_frame_gaps, count_divisions, link_frames, prune_isolated_nodes
 
 
 @dataclass
@@ -177,8 +177,24 @@ def run_tracking_pipeline(
             if s in position_by_id and u in position_by_id:
                 velocity_by_id[u] = (position_by_id[u] - position_by_id[s]) * cfg.scale_array
 
+    pair_edges = [(int(e["source_id"]), int(e["target_id"])) for e in edge_rows]
+    for s, u in close_frame_gaps(frame_ids, frame_centroids, frame_intensities, pair_edges, cfg):
+        edge_rows.append(
+            {
+                "dataset": dataset_name,
+                "row_type": "edge",
+                "node_id": -1,
+                "t": -1,
+                "z": -1,
+                "y": -1,
+                "x": -1,
+                "source_id": int(s),
+                "target_id": int(u),
+            }
+        )
+
     if cfg.prune_isolated_nodes:
-        node_rows, edge_rows, prune_stats = prune_isolated_nodes(node_rows, edge_rows)
+        node_rows, edge_rows, prune_stats = prune_isolated_nodes(node_rows, edge_rows, cfg)
     else:
         prune_stats = {"removed_isolated": 0}
 
