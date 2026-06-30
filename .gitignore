@@ -205,6 +205,8 @@ tempCodeRunnerFile.py
 
 # Project outputs
 outputs/
+overleaf/
+overleaf.zip
 
 # Ruff stuff:
 .ruff_cache/

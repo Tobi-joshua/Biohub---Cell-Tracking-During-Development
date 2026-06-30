@@ -170,6 +170,17 @@ pdflatex main
 
 Output: `paper/main.pdf`
 
+### Overleaf (no local LaTeX install)
+
+```bash
+python scripts/prepare_overleaf.py
+```
+
+Upload **`overleaf.zip`** to [Overleaf](https://www.overleaf.com) → **New Project → Upload Project**.  
+Set compiler to **pdfLaTeX**, main file **`main.tex`**, then **Recompile**.
+
+Full steps: [`paper/OVERLEAF.md`](paper/OVERLEAF.md)
+
 ---
 
 ## Pipeline summary
