@@ -71,19 +71,22 @@ def build_cells() -> list[dict]:
 Self-contained notebook generated from `src/biohub/`.  
 Regenerate locally: `python scripts/build_notebook.py`
 
-**Version 6** uses the **v4 competition baseline** (leaderboard 0.659).  
-v1.5 experiments are disabled by default — see `EXPERIMENTS.md`.
+**Version 7** validated **0.659** (v4 competition baseline).  
+**Version 8+** — run optional train hyperparameter search, then change **one** knob.
+
+v1.5 experiments stay disabled — see `EXPERIMENTS.md`.
 
 **Steps**
 1. Add the Biohub dataset to this notebook.
-2. Run all cells.
+2. Run all cells (search → optional V8 override → submit).
 3. Submit `submission.csv` from the output panel.
 
 | Setting | Default |
 |---------|---------|
 | Output | `submission.csv` |
-| Tuning | density calibration on train; optional grid search |
 | Preset | v4 competition baseline (v1.5 features off) |
+| Tuning | Optional train grid search + density calibration |
+| V8 rule | Change **one** parameter per submission |
 """
         )
     )
@@ -136,9 +139,9 @@ print("Imports OK")
     cells.append(
         md(
             """
-## Run pipeline
+## 1. Configuration (v4 preset)
 
-Set `run_hyperparameter_search=True` only if you have spare runtime (train grid search).
+Baseline validated at **0.659** (V7). Starts from `competition_v4_preset()`.
 """
         )
     )
@@ -149,17 +152,105 @@ Set `run_hyperparameter_search=True` only if you have spare runtime (train grid 
 CFG = Config()
 CFG.resolve_paths()
 
-# --- Version 6: v4 competition baseline (0.659) ---
-# v1.5 features (gap close, soft prune, symmetry) default OFF — see EXPERIMENTS.md
+# v4 competition baseline (0.659) — v1.5 features OFF
 CFG = CFG.competition_v4_preset()
-
-# Optional overrides (tune one knob at a time after hyperparameter search):
-# CFG = CFG.copy_with(thresh_rel=0.30, max_link_dist_um=11.0)
 
 print(f"Pipeline v{{PIPELINE_VERSION}}")
 print(f"train: {{CFG.train_dir}}")
 print(f"test:  {{CFG.test_dir}}")
 print(f"out:   {{CFG.output_path}}")
+"""
+        )
+    )
+
+    cells.append(
+        md(
+            """
+## 2. Hyperparameter search (optional, recommended for V8+)
+
+Grid-searches `thresh_rel`, `max_link_dist_um`, division gates, and `nms_radius_um` on train.  
+Set `RUN_HPARAM_SEARCH = False` to skip and replay V7 faster (~15–30 min saved).
+"""
+        )
+    )
+
+    cells.append(
+        code(
+            """
+RUN_HPARAM_SEARCH = True  # False = skip search (V7 replay)
+
+if RUN_HPARAM_SEARCH and CFG.train_dir is not None:
+    CFG.run_hyperparameter_search = True
+    CFG.hyperparam_sample_limit = 5
+    CFG.hyperparam_frames = 6
+    CFG, hparam_table = apply_train_tuning(CFG)
+    top = hparam_table.sort_values("mean_score", ascending=False)
+    display(top.head(10))
+    print(
+        "Best from search:",
+        f"thresh_rel={CFG.thresh_rel:.3f}",
+        f"max_link_dist_um={CFG.max_link_dist_um:.1f}",
+        f"div_parent={CFG.div_parent_dist_um:.1f}",
+        f"div_sister={CFG.div_sister_dist_um:.1f}",
+        f"nms={CFG.nms_radius_um:.2f}",
+    )
+    CFG.run_hyperparameter_search = False  # do not repeat inside build_submission
+elif CFG.train_dir is None:
+    print("No train directory — skipping hyperparameter search")
+else:
+    print("Skipping hyperparameter search (RUN_HPARAM_SEARCH=False)")
+"""
+        )
+    )
+
+    cells.append(
+        md(
+            """
+## 3. V8 single-knob override
+
+**Rule:** uncomment **exactly one** line below per Kaggle submission.  
+Compare score to V7 (0.659). If worse, revert and try the next knob.
+
+| Knob | Typical effect |
+|------|----------------|
+| `max_link_dist_um` | Edge recall vs false links |
+| `thresh_rel` | Node count / precision |
+| `nms_radius_um` | Duplicate peak suppression |
+| `div_parent_dist_um` / `div_sister_dist_um` | Division metric |
+"""
+        )
+    )
+
+    cells.append(
+        code(
+            """
+# === V8: uncomment ONE line only ===
+V8_OVERRIDES = {
+    # "max_link_dist_um": 10.0,
+    # "max_link_dist_um": 10.5,
+    # "thresh_rel": 0.28,
+    # "thresh_rel": 0.32,
+    # "nms_radius_um": 2.5,
+    # "div_parent_dist_um": 11.0,
+    # "div_sister_dist_um": 7.0,
+    # "div_sister_dist_um": 8.0,
+}
+
+if V8_OVERRIDES:
+    CFG = CFG.copy_with(**V8_OVERRIDES)
+    print("V8 overrides applied:", V8_OVERRIDES)
+else:
+    print("No V8 overrides — using search + calibration defaults (V7 baseline)")
+"""
+        )
+    )
+
+    cells.append(
+        md(
+            """
+## 4. Build submission
+
+Runs density calibration on train, then processes all test volumes.
 """
         )
     )
