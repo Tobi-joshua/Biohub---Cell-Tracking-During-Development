@@ -1,50 +1,55 @@
 # Biohub Cell Lineage Tracker
 
-Open pipeline and interactive application for **3D time-lapse cell detection, tracking, and lineage reconstruction** in fluorescence microscopy volumes.
+Interactive pipeline and Streamlit application for **3D time-lapse cell detection, tracking, and lineage reconstruction** in fluorescence microscopy volumes.
 
-Author: **Tobi-Joshua Samuel**
+**Author:** Tobi-Joshua Samuel
 
-## Repository layout
+---
 
-```
-app.py                 Streamlit application entry point
-app/ui.py              UI helpers
-src/biohub/dataset_catalog.py   Local Biohub dataset discovery (train/test, zarr/geff)
-src/data/              Data loader re-exports
-src/detection/         Detection re-exports
-src/tracking/          Tracking re-exports
-src/visualization/     Plotting utilities
-src/export/            CSV / JSON export
-scripts/generate_figures.py   Publication figure batch script
-paper/main.tex         IEEE-style manuscript
-paper/references.bib   Bibliography
-figures/               Generated and manual figures
-data/sample/           Bundled synthetic sample (created on first run)
-outputs/               Exported graphs from the app
-```
+## Features
 
-## Install
+- Local **Zarr / GEFF** dataset browser (train and test splits)
+- Detection, Hungarian linking, and division inference (pipeline v1.4)
+- Interactive viewers: volume slices, detection overlays, inter-frame links
+- Publication-style plots: montage, lineage timeline, scale bars
+- GIF time-lapse export for presentations and papers
+- CSV / JSON export of lineage graphs
+- IEEE-style LaTeX manuscript in `paper/`
+
+---
+
+## Quick start
 
 ```bash
+git clone https://github.com/Tobi-joshua/Biohub---Cell-Tracking-During-Development.git
+cd Biohub---Cell-Tracking-During-Development
+
 python -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate          # Windows: .venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-```
 
-## Run the Streamlit app
-
-```bash
-pip install -r requirements.txt
 streamlit run app.py
 ```
 
-### Local Biohub dataset (primary workflow)
+Open `http://localhost:8501` in your browser.
 
-1. Download the **Biohub Cell Tracking** dataset to your machine.
-2. In the sidebar, set **Dataset root directory** to the folder that contains `train/` and/or `test/`.
-3. Click **Scan dataset** — the app discovers all `.zarr` volumes and paired `.geff` annotations.
-4. Select a volume from the dropdown and click **Load volume**.
-5. Run the pipeline and export results.
+---
+
+## Using the app
+
+### 1. Load data (sidebar)
+
+| Source | When to use |
+|--------|-------------|
+| **Local Biohub dataset** | Primary workflow — your downloaded train/test data |
+| **Synthetic demo** | Offline testing when no dataset is available |
+| **Upload .npy** | Custom NumPy volume, shape `(T, Z, Y, X)` |
+
+**Local dataset steps**
+
+1. Set **Dataset root directory** to the folder containing `train/` and/or `test/`.
+2. Click **Scan dataset**.
+3. Choose a volume and click **Load volume**.
 
 Expected layout:
 
@@ -52,115 +57,86 @@ Expected layout:
 your-dataset-root/
   train/
     <sample_id>.zarr
-    <sample_id>.geff
+    <sample_id>.geff      # optional ground-truth graph
   test/
     <sample_id>.zarr
 ```
 
-The app also accepts a split directory (`.../train`) or a flat folder of `.zarr` files.
+The scanner also accepts a split folder (`.../train`) or a flat directory of `.zarr` volumes.
 
-### Other data sources
+### 2. Configure analysis (sidebar → Analysis settings)
 
-- **Synthetic demo** — bundled fallback when no local data is available
-- **Upload .npy** — NumPy array with shape `(T, Z, Y, X)`
+- **Preview** — process the first *N* frames (fast iteration)
+- **Full sequence** — process every timepoint in the volume
+- Tune detection threshold, link distance, and division gates
 
-No remote download or API credentials are required.
+### 3. Navigate pages (top bar)
 
-## Run in VS Code
+| Page | Purpose |
+|------|---------|
+| **Home** | Overview and workflow |
+| **Dataset** | Catalog summary and loaded volume metadata |
+| **Volume** | Raw slice viewer and intensity histogram |
+| **Pipeline** | Run detection + tracking; per-frame counts |
+| **Detection** | Overlays, montage, inter-frame links, GIF animation |
+| **Lineage** | Topology graph and track timeline |
+| **Exports** | Download CSV / JSON lineage files |
 
-### 1. Clone and open
+---
 
-```bash
-git clone https://github.com/Tobi-joshua/Biohub---Cell-Tracking-During-Development.git
-cd Biohub---Cell-Tracking-During-Development
-code .
+## VS Code setup
+
+1. Open the cloned repo in VS Code.
+2. **Python: Select Interpreter** → `.venv`
+3. Install deps: `pip install -r requirements.txt`
+4. Start the app:
+   - **Terminal:** `streamlit run app.py`
+   - **F5:** choose **Streamlit: Biohub App** (`.vscode/launch.json`)
+
+`PYTHONPATH=src` is set in `.vscode/settings.json` so `biohub` imports resolve automatically.
+
+---
+
+## Repository layout
+
+```
+app.py                          Streamlit entry point
+app/ui.py                       Sidebar and session helpers
+src/biohub/                     Core pipeline (detection, tracking, export)
+src/biohub/dataset_catalog.py   Local dataset discovery
+scripts/generate_figures.py     Batch figure generation for the paper
+paper/main.tex                  IEEE-style manuscript
+paper/references.bib            Bibliography
+figures/                        Generated and manual figures
+data/sample/                    Synthetic sample (created on first demo run)
+outputs/                        Exported graphs from the app
 ```
 
-### 2. Create the virtual environment
+---
 
-**Terminal → New Terminal** in VS Code:
-
-```bash
-python -m venv .venv
-```
-
-Activate it:
-
-| OS | Command |
-|----|---------|
-| Windows (PowerShell) | `.venv\Scripts\Activate.ps1` |
-| Windows (cmd) | `.venv\Scripts\activate.bat` |
-| macOS / Linux | `source .venv/bin/activate` |
-
-When prompted, select the `.venv` interpreter:  
-`Ctrl+Shift+P` → **Python: Select Interpreter** → `.venv`
-
-### 3. Install dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-### 4. Start the app
-
-**Option A — integrated terminal (simplest)**
-
-```bash
-streamlit run app.py
-```
-
-VS Code may show a popup to open `http://localhost:8501` in the browser.
-
-**Option B — Run and Debug**
-
-1. Open **Run and Debug** (`Ctrl+Shift+D`)
-2. Choose **Streamlit: Biohub App**
-3. Press **F5**
-
-### 5. Load your data in the app
-
-1. Sidebar → **Local Biohub dataset**
-2. **Dataset root directory** → absolute path to your downloaded folder, e.g.  
-   `C:\data\biohub-cell-tracking-during-development` (Windows) or  
-   `/home/you/data/biohub-cell-tracking-during-development` (Linux/macOS)
-3. **Scan dataset** → pick a volume → **Load volume**
-4. **Pipeline** tab → **Run detection and tracking**
-
-If you do not have the dataset yet, use **Synthetic demo** in the sidebar to try the interface.
-
-### Troubleshooting
-
-| Issue | Fix |
-|-------|-----|
-| `ModuleNotFoundError: biohub` | Run from repo root; ensure `PYTHONPATH=src` or use the `.vscode` settings included in this repo |
-| `blosc2` / `zarr` errors | `pip install -r requirements.txt` inside `.venv` |
-| Scan finds 0 volumes | Path must contain `train/` or `test/` with `*.zarr` folders |
-| App opens but is blank | Check the terminal for errors; try another browser tab |
-
-## Generate figures for the paper
+## Generate paper figures
 
 ```bash
 python scripts/generate_figures.py
 ```
 
-This writes to `figures/`:
+Writes to `figures/`:
+
 - `pipeline_overview.png`
 - `sample_volume.png`
 - `detection_overlay.png`
 - `frame_counts.png`
 - `lineage_graph.png`
+- `lineage_timeline.png`
+- `temporal_montage.png`
 
-### Manual screenshot for the paper
+For the UI figure, capture a screenshot after running the app and save as `figures/ui_screenshot.png`.
 
-1. Run `streamlit run app.py`
-2. Open the **Pipeline** or **Detection** tab after processing
-3. Capture a screenshot
-4. Save as `figures/ui_screenshot.png`
-5. Uncomment the UI figure block in `paper/main.tex`
+---
 
-## Compile the paper (PDF)
+## Compile the paper
 
-Requires a LaTeX distribution with `IEEEtran`.
+Requires LaTeX with `IEEEtran`.
 
 ```bash
 python scripts/generate_figures.py
@@ -173,7 +149,9 @@ pdflatex main
 
 Output: `paper/main.pdf`
 
-## Pipeline overview
+---
+
+## Pipeline summary
 
 | Stage | Method |
 |-------|--------|
@@ -182,19 +160,31 @@ Output: `paper/main.pdf`
 | Divisions | Sister-distance and midpoint-gated mitosis inference |
 | Export | CSV lineage table and JSON graph |
 
-## Data format
-
-Volumes: `(T, Z, Y, X)` uint16, Zarr chunks one frame at a time.  
-Voxel spacing: Z = 1.625 µm, Y = X = 0.40625 µm.  
-Optional GEFF graph annotations for training / validation.
+**Voxel spacing:** Z = 1.625 µm, Y = X = 0.40625 µm  
+**Volume format:** `(T, Z, Y, X)` uint16 Zarr, one frame per chunk
 
 See `DATA_NOTES.md` for format details.
 
+---
+
+## Troubleshooting
+
+| Issue | Fix |
+|-------|-----|
+| `ModuleNotFoundError: biohub` | Run from repo root; activate `.venv`; `PYTHONPATH` should include `src` |
+| `ImportError: plot_gt_overlay` | `git pull` — ensure you are on the latest `main` |
+| `blosc2` / `zarr` errors | `pip install -r requirements.txt` inside `.venv` |
+| Scan finds 0 volumes | Path must contain `train/` or `test/` with `*.zarr` folders |
+| Navigation hidden under toolbar | Update to latest app — uses top segmented-control navigation |
+| Blank page / errors in terminal | Check terminal traceback; try a fresh browser tab |
+
+---
+
 ## References
 
-- van der Walt et al., scikit-image, PeerJ 2014  
-- Kuhn, The Hungarian Method, Naval Research Logistics 1955  
-- Tinevez et al., TrackMate, Methods 2017  
-- Stringer et al., Cellpose, Nature Methods 2021  
+Full bibliography in `paper/references.bib`. Key methods:
 
-Full bibliography in `paper/references.bib`.
+- van der Walt et al., scikit-image, PeerJ 2014
+- Kuhn, The Hungarian Method, Naval Research Logistics 1955
+- Tinevez et al., TrackMate, Methods 2017
+- Stringer et al., Cellpose, Nature Methods 2021
