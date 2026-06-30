@@ -72,7 +72,7 @@ Self-contained notebook generated from `src/biohub/`.
 Regenerate locally: `python scripts/build_notebook.py`
 
 **Steps**
-1. Add the competition dataset to this notebook.
+1. Add the Biohub dataset to this notebook.
 2. Run all cells.
 3. Submit `submission.csv` from the output panel.
 

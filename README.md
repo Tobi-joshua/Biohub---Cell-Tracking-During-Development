@@ -2,7 +2,8 @@
 
 Interactive pipeline and Streamlit application for **3D time-lapse cell detection, tracking, and lineage reconstruction** in fluorescence microscopy volumes.
 
-**Author:** Tobi-Joshua Samuel
+**Author:** Tobi-Joshua Samuel  
+**License:** [MIT](LICENSE) · **Cite:** [CITATION.cff](CITATION.cff) · **Contribute:** [CONTRIBUTING.md](CONTRIBUTING.md)
 
 **Live app:** [biohub-cell-lineage-tracker.streamlit.app](https://bioapp---cell-tracking-during-development-ezpjtah7icn2tfr8tie4.streamlit.app/) — no install required; try the **Synthetic demo** in the sidebar.
 
@@ -113,11 +114,15 @@ app/ui.py                       Sidebar and session helpers
 src/biohub/                     Core pipeline (detection, tracking, export)
 src/biohub/dataset_catalog.py   Local dataset discovery
 scripts/generate_figures.py     Batch figure generation for the paper
+scripts/prepare_overleaf.py     Overleaf upload bundle
 paper/main.tex                  IEEE-style manuscript
 paper/references.bib            Bibliography
 figures/                        Generated and manual figures
+docs/                           Development documentation
+notebooks/                      Generated batch submission notebook
 data/sample/                    Synthetic sample (created on first demo run)
-outputs/                        Exported graphs from the app
+outputs/                        Exported graphs (gitignored)
+results/                        Tuning output CSVs (gitignored)
 ```
 
 ---
@@ -195,15 +200,15 @@ Full steps: [`paper/OVERLEAF.md`](paper/OVERLEAF.md)
 | Validation | `scripts/run_validation.py` → `results/validation_*.csv` |
 | Export | CSV lineage table and JSON graph |
 
-See `EXPERIMENTS.md` and `CHANGELOG.md` for v1.5 improvement notes (baseline public score **0.659**).
+See `docs/DEVELOPMENT.md` and `CHANGELOG.md` for pipeline tuning notes.
 
-### Batch submission notebook (Kaggle / offline)
+### Batch submission notebook
 
 ```bash
 python scripts/build_notebook.py
 ```
 
-Writes `notebooks/biohub-cell-tracking-submission.ipynb` — a self-contained notebook with all `src/biohub` pipeline code inlined. See `notebooks/README.md` for upload and submit steps.
+Writes `notebooks/biohub-cell-tracking-submission.ipynb` — a self-contained notebook with inlined pipeline code. See `notebooks/README.md`.
 
 ---
 

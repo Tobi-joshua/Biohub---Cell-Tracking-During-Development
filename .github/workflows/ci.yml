@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Syntax check
+        run: |
+          PYTHONPATH=src python -m py_compile app.py app/ui.py
+          PYTHONPATH=src python -m compileall src/biohub
+
+      - name: Smoke test pipeline
+        run: |
+          PYTHONPATH=src python -c "
+          from biohub.config import Config, PIPELINE_VERSION
+          from biohub.sample_data import synthetic_volume
+          from biohub.analysis import run_tracking_pipeline
+          vol = synthetic_volume(t=6, z=16, y=48, x=48, n_cells=8)
+          r = run_tracking_pipeline(list(vol), Config(), dataset_name='ci')
+          assert r.n_nodes > 0
+          print('PIPELINE_VERSION', PIPELINE_VERSION, 'nodes', r.n_nodes)
+          "

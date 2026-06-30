@@ -1,0 +1,29 @@
+cff-version: 1.2.0
+title: Biohub Cell Lineage Tracker
+message: >-
+  If you use this software, please cite it using the metadata from this file.
+type: software
+authors:
+  - family-names: Samuel
+    given-names: Tobi-Joshua
+repository-code: 'https://github.com/Tobi-joshua/Biohub---Cell-Tracking-During-Development'
+url: 'https://bioapp---cell-tracking-during-development-ezpjtah7icn2tfr8tie4.streamlit.app/'
+license: MIT
+version: 1.0.0
+date-released: '2026-06-30'
+keywords:
+  - cell tracking
+  - lineage reconstruction
+  - light-sheet microscopy
+  - 3D image analysis
+  - zebrafish
+preferred-citation:
+  type: article
+  title: >-
+    Biohub Cell Lineage Tracker: An Open Pipeline and Interactive System for 3D
+    Cell Tracking During Development
+  authors:
+    - family-names: Samuel
+      given-names: Tobi-Joshua
+  year: 2026
+  notes: IEEE-style manuscript in paper/main.tex

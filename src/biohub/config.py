@@ -100,12 +100,12 @@ class Config:
         """Resolve default data directories relative to the project root."""
         root = project_root or Path.cwd()
 
-        # Hosted notebook runtime (e.g. Kaggle): discover competition input paths.
-        kaggle_candidates = [
+        # Hosted notebook runtimes (e.g. cloud notebook with read-only input mount).
+        hosted_roots = [
             Path("/kaggle/input/competitions/biohub-cell-tracking-during-development"),
             Path("/kaggle/input/biohub-cell-tracking-during-development"),
         ]
-        for comp_root in kaggle_candidates:
+        for comp_root in hosted_roots:
             if (comp_root / "test").is_dir():
                 self.data_root = comp_root
                 self.test_dir = comp_root / "test"
