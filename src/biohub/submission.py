@@ -4,14 +4,13 @@ from __future__ import annotations
 
 import gc
 import time
-from collections import Counter
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
 
-from biohub.config import Config, MATCH_GATE_UM, SCALE
+from biohub.config import Config, MATCH_GATE_UM, PIPELINE_VERSION, SCALE
 from biohub.data import (
     list_datasets,
     load_geff_graph,
@@ -19,8 +18,9 @@ from biohub.data import (
     read_estimated_nodes,
     read_zarr_meta,
 )
-from biohub.detection import detect_cells
+from biohub.detector import get_detector
 from biohub.tracking import count_divisions, link_frames, prune_isolated_nodes
+from biohub.tuning import hyperparameter_search
 
 
 def _node_row(dataset: str, node_id: int, t: int, zyx) -> dict:
@@ -58,18 +58,14 @@ def calibrate_detection(
     sample_limit: int = 4,
     frames_per_sample: int = 5,
 ) -> float:
-    """
-    Sweep THRESH_REL on training samples to match estimated_number_of_nodes.
-
-    Returns the best thresh_rel value found.
-    """
+    """Sweep thresh_rel on training samples to match per-frame density."""
+    detector = get_detector(cfg)
     names = list_datasets(train_dir)[:sample_limit]
     if not names:
         return cfg.thresh_rel
 
     grid = [0.26, 0.30, 0.34, 0.38]
-    default_thresh = cfg.thresh_rel
-    best_thresh, best_err = default_thresh, np.inf
+    best_thresh, best_err = cfg.thresh_rel, np.inf
 
     for thresh in grid:
         cfg.thresh_rel = thresh
@@ -84,7 +80,7 @@ def calibrate_detection(
             n_pred = 0
             for t in range(n_frames):
                 vol = load_volume(zarr_path, t, shape, dtype)
-                coords, _ = detect_cells(vol, cfg)
+                coords, _, _ = detector.detect(vol, cfg)
                 n_pred += len(coords)
             avg_per_frame = n_pred / max(n_frames, 1)
             target_per_frame = est / max(shape[0], 1)
@@ -101,56 +97,95 @@ def calibrate_detection(
     return best_thresh
 
 
+def apply_train_tuning(cfg: Config) -> Tuple[Config, Optional[pd.DataFrame]]:
+    """Run v1.4 hyperparameter search when enabled and train data exists."""
+    if not cfg.run_hyperparameter_search or cfg.train_dir is None:
+        return cfg, None
+    print(f"Running hyperparameter search (v{PIPELINE_VERSION})...")
+    best, table = hyperparameter_search(
+        cfg.train_dir,
+        cfg,
+        sample_limit=cfg.hyperparam_sample_limit,
+        frames=cfg.hyperparam_frames,
+    )
+    if len(table):
+        print(table.head(3).to_string(index=False))
+    return best, table
+
+
 def process_dataset(
     split_dir: Path,
     name: str,
     cfg: Config,
 ) -> Tuple[List[dict], Dict[str, object]]:
     """Run detection + tracking on one dataset."""
+    detector = get_detector(cfg)
     zarr_path = split_dir / f"{name}.zarr"
     shape, dtype = read_zarr_meta(zarr_path)
-    n_t, n_z, n_y, n_x = shape
+    n_t = shape[0]
 
     node_rows: List[dict] = []
     edge_rows: List[dict] = []
     frame_ids: List[List[int]] = []
     frame_centroids: List[np.ndarray] = []
+    frame_intensities: List[np.ndarray] = []
     node_id = 1
     prev_count: Optional[int] = None
     frame_counts: List[int] = []
+    velocity_by_id: Dict[int, np.ndarray] = {}
+    position_by_id: Dict[int, np.ndarray] = {}
 
     for t in range(n_t):
         vol = load_volume(zarr_path, t, shape, dtype)
-        coords, scores = detect_cells(vol, cfg, prev_count=prev_count)
+        coords, scores, intens = detector.detect(vol, cfg, prev_count=prev_count)
         del vol
         gc.collect()
 
         if len(coords):
             order = np.lexsort((coords[:, 2], coords[:, 1], coords[:, 0]))
             coords = coords[order]
+            intens = intens[order]
 
         curr_ids = list(range(node_id, node_id + len(coords)))
         node_id += len(coords)
         frame_ids.append(curr_ids)
         frame_centroids.append(coords)
+        frame_intensities.append(intens)
         frame_counts.append(len(coords))
         prev_count = len(coords)
 
-        for nid, zyx in zip(curr_ids, coords):
-            node_rows.append(_node_row(name, nid, t, zyx))
+        for nid, pt in zip(curr_ids, coords):
+            node_rows.append(_node_row(name, nid, t, pt))
+            position_by_id[int(nid)] = pt.astype(np.float64)
 
     for t in range(1, n_t):
-        next_xyz = frame_centroids[t + 1] if t + 1 < n_t else None
+        prev_ids = frame_ids[t - 1]
+        curr_ids = frame_ids[t]
+        prev_xyz = frame_centroids[t - 1]
+        curr_xyz = frame_centroids[t]
+        prev_int = frame_intensities[t - 1]
+        curr_int = frame_intensities[t]
+        prev_vel = np.asarray(
+            [velocity_by_id.get(pid, np.zeros(3, dtype=np.float64)) for pid in prev_ids],
+            dtype=np.float64,
+        )
+
         links = link_frames(
-            frame_ids[t - 1],
-            frame_centroids[t - 1],
-            frame_ids[t],
-            frame_centroids[t],
+            prev_ids,
+            prev_xyz,
+            curr_ids,
+            curr_xyz,
             cfg,
-            next_xyz=next_xyz,
+            prev_intensity=prev_int,
+            curr_intensity=curr_int,
+            prev_velocity=prev_vel if cfg.use_rich_linking else None,
         )
         for s, u in links:
             edge_rows.append(_edge_row(name, s, u))
+            if s in position_by_id and u in position_by_id:
+                velocity_by_id[u] = (
+                    position_by_id[u] - position_by_id[s]
+                ) * cfg.scale_array
 
     nodes_before = len(node_rows)
     edges_before = len(edge_rows)
@@ -178,20 +213,23 @@ def process_dataset(
     return node_rows + edge_rows, stats
 
 
-def build_submission(cfg: Optional[Config] = None) -> pd.DataFrame:
+def build_submission(cfg: Optional[Config] = None) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Process all test datasets and write submission.csv."""
     cfg = cfg or Config()
     cfg.resolve_paths()
     if cfg.test_dir is None:
         raise FileNotFoundError("Test directory not found")
 
-    if cfg.train_dir is not None and not cfg.submit_mode:
+    if cfg.train_dir is not None:
+        cfg, _ = apply_train_tuning(cfg)
         calibrate_detection(cfg.train_dir, cfg, cfg.eda_sample_limit, cfg.calibration_frames)
 
     datasets = list_datasets(cfg.test_dir)
     all_rows: List[dict] = []
     all_stats = []
     t0 = time.time()
+
+    print(f"Pipeline v{PIPELINE_VERSION} | detector={cfg.detector_backend} | thresh_rel={cfg.thresh_rel:.2f}")
 
     for i, name in enumerate(datasets, 1):
         rows, stats = process_dataset(cfg.test_dir, name, cfg)
