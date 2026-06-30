@@ -16,7 +16,9 @@ from biohub.sample_data import synthetic_volume
 from biohub.visualization import (
     plot_frame_counts,
     plot_lineage_graph,
+    plot_lineage_timeline,
     plot_slice_overlay,
+    plot_temporal_montage,
     plot_volume_slices,
     save_figure,
 )
@@ -41,6 +43,11 @@ def main() -> None:
         FIGURES / "frame_counts.png",
     )
     save_figure(plot_lineage_graph(result), FIGURES / "lineage_graph.png")
+    save_figure(plot_lineage_timeline(result), FIGURES / "lineage_timeline.png")
+    save_figure(
+        plot_temporal_montage(vol4d, result.frames, z_idx=16, title="Temporal detection montage"),
+        FIGURES / "temporal_montage.png",
+    )
 
     # Pipeline schematic (simple matplotlib diagram)
     import matplotlib.pyplot as plt
