@@ -207,6 +207,8 @@ tempCodeRunnerFile.py
 outputs/
 overleaf/
 overleaf.zip
+results/*
+!results/.gitkeep
 
 # Ruff stuff:
 .ruff_cache/
