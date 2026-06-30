@@ -46,43 +46,40 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-st.markdown(
-    """
-    <style>
-    /* Main content spacing */
-    .block-container {
-        padding-top: 1rem;
-        padding-bottom: 2rem;
-        max-width: 1400px;
-    }
-    h1 { font-weight: 600; letter-spacing: -0.02em; }
+APP_CSS = """
+<style>
+/* Push main content below the Streamlit toolbar */
+section.main > div.block-container {
+    padding-top: 4.5rem;
+    padding-bottom: 2rem;
+    max-width: 1400px;
+}
 
-    /* Keep tab navigation visible while scrolling main content */
-    div[data-testid="stTabs"] > div:first-child {
-        position: sticky;
-        top: 0;
-        z-index: 1000;
-        background: var(--background-color, #ffffff);
-        border-bottom: 1px solid rgba(49, 51, 63, 0.12);
-        padding-top: 0.25rem;
-        padding-bottom: 0.35rem;
-        margin-bottom: 0.5rem;
-    }
-    div[data-testid="stTabs"] button[data-baseweb="tab"] {
-        font-weight: 500;
-    }
-    div[data-testid="stTabs"] button[data-baseweb="tab"][aria-selected="true"] {
-        border-bottom: 2px solid #3366AA;
-    }
+h1 { font-weight: 600; letter-spacing: -0.02em; }
 
-    /* Prevent sidebar from overlapping main tab bar on narrow viewports */
-    section[data-testid="stSidebar"] {
-        z-index: 999;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
+/* Page navigation bar */
+.biohub-nav-wrap {
+    margin: 0 0 1.25rem 0;
+    padding: 0.65rem 0 0.75rem 0;
+    border-bottom: 1px solid rgba(49, 51, 63, 0.15);
+    background: var(--background-color, #ffffff);
+}
+
+div[data-testid="stSegmentedControl"] {
+    width: 100%;
+}
+
+div[data-testid="stSegmentedControl"] > div {
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+</style>
+"""
+
+NAV_PAGES = ["Home", "Dataset", "Volume", "Pipeline", "Detection", "Lineage", "Exports"]
+
+st.markdown(APP_CSS, unsafe_allow_html=True)
+
 
 init_session()
 
@@ -108,7 +105,7 @@ def home_tab() -> None:
         1. Set **Dataset root directory** in the sidebar and click **Scan dataset**.
         2. Choose a volume from the dropdown and click **Load volume**.
         3. Inspect raw data under **Volume**, then run **Pipeline**.
-        4. Review detections, lineage animations, and exports.
+        4. Review detections, lineage, and exports on the other pages.
 
         Use **Synthetic demo** only when no local dataset is available.
         """
@@ -383,26 +380,35 @@ def exports_tab(cfg) -> None:
     st.caption(f"Saved to `{csv_path}` and `{json_path}`.")
 
 
-# Main layout: tabs first in the content area, sidebar configured below.
-tabs = st.tabs(["Home", "Dataset", "Volume", "Pipeline", "Detection", "Lineage", "Exports"])
-
+# Sidebar controls (dataset + pipeline settings)
 with st.sidebar:
     render_dataset_sidebar()
     cfg, _mode, preview_frames = sidebar_settings(st.session_state.cfg)
     st.session_state.cfg = cfg
     st.session_state.preview_frames = preview_frames
 
-with tabs[0]:
+# Page navigation — segmented control stays in normal document flow (no sticky overlap)
+st.markdown('<div class="biohub-nav-wrap">', unsafe_allow_html=True)
+page = st.segmented_control(
+    "Section",
+    NAV_PAGES,
+    default=NAV_PAGES[0],
+    label_visibility="collapsed",
+    key="main_nav",
+)
+st.markdown("</div>", unsafe_allow_html=True)
+
+if page == "Home":
     home_tab()
-with tabs[1]:
+elif page == "Dataset":
     data_tab()
-with tabs[2]:
+elif page == "Volume":
     volume_tab()
-with tabs[3]:
+elif page == "Pipeline":
     pipeline_tab(cfg)
-with tabs[4]:
+elif page == "Detection":
     detection_tab()
-with tabs[5]:
+elif page == "Lineage":
     lineage_tab()
-with tabs[6]:
+elif page == "Exports":
     exports_tab(cfg)
