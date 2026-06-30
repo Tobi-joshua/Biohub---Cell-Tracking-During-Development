@@ -107,24 +107,24 @@ def run_pipeline_on_session(cfg: Config, preview_frames: int) -> AnalysisResult:
 
 
 def sidebar_settings(cfg: Config) -> tuple[Config, str, int]:
-    st.sidebar.header("Analysis settings")
-    mode = st.sidebar.radio("Processing mode", ["Preview", "Full sequence"], index=0)
-    if mode == "Preview":
-        preview_frames = st.sidebar.number_input("Preview frames", 3, 200, int(cfg.preview_max_frames))
-    else:
-        preview_frames = 10_000
-    cfg = cfg.copy_with(
-        thresh_rel=st.sidebar.slider("Detection threshold (rel.)", 0.18, 0.42, float(cfg.thresh_rel), 0.02),
-        max_link_dist_um=st.sidebar.slider("Max link distance (µm)", 8.0, 14.0, float(cfg.max_link_dist_um), 0.5),
-        div_parent_dist_um=st.sidebar.slider("Division parent gate (µm)", 8.0, 14.0, float(cfg.div_parent_dist_um), 0.5),
-        div_sister_dist_um=st.sidebar.slider("Division sister gate (µm)", 5.0, 10.0, float(cfg.div_sister_dist_um), 0.5),
-        detect_divisions=st.sidebar.checkbox("Detect divisions", value=cfg.detect_divisions),
-        prune_isolated_nodes=st.sidebar.checkbox("Prune isolated nodes", value=cfg.prune_isolated_nodes),
-        use_rich_linking=st.sidebar.checkbox("Rich linking cost", value=cfg.use_rich_linking),
-        preview_max_frames=int(preview_frames),
-    )
-    st.sidebar.caption(f"Pipeline v{PIPELINE_VERSION}")
-    st.sidebar.caption(f"Voxel scale (Z,Y,X): {SCALE[0]}, {SCALE[1]}, {SCALE[2]} µm")
+    with st.sidebar.expander("Analysis settings", expanded=True):
+        mode = st.radio("Processing mode", ["Preview", "Full sequence"], index=0)
+        if mode == "Preview":
+            preview_frames = st.number_input("Preview frames", 3, 200, int(cfg.preview_max_frames))
+        else:
+            preview_frames = 10_000
+        cfg = cfg.copy_with(
+            thresh_rel=st.slider("Detection threshold (rel.)", 0.18, 0.42, float(cfg.thresh_rel), 0.02),
+            max_link_dist_um=st.slider("Max link distance (µm)", 8.0, 14.0, float(cfg.max_link_dist_um), 0.5),
+            div_parent_dist_um=st.slider("Division parent gate (µm)", 8.0, 14.0, float(cfg.div_parent_dist_um), 0.5),
+            div_sister_dist_um=st.slider("Division sister gate (µm)", 5.0, 10.0, float(cfg.div_sister_dist_um), 0.5),
+            detect_divisions=st.checkbox("Detect divisions", value=cfg.detect_divisions),
+            prune_isolated_nodes=st.checkbox("Prune isolated nodes", value=cfg.prune_isolated_nodes),
+            use_rich_linking=st.checkbox("Rich linking cost", value=cfg.use_rich_linking),
+            preview_max_frames=int(preview_frames),
+        )
+        st.caption(f"Pipeline v{PIPELINE_VERSION}")
+        st.caption(f"Voxel scale (Z,Y,X): {SCALE[0]}, {SCALE[1]}, {SCALE[2]} µm")
     return cfg, mode, int(preview_frames)
 
 

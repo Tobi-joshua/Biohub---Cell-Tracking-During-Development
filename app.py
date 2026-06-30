@@ -28,11 +28,15 @@ from biohub.data import load_geff_graph  # noqa: E402
 from biohub.dataset_catalog import DatasetCatalog  # noqa: E402
 from biohub.export import division_events, to_graph_json, to_lineage_csv  # noqa: E402
 from biohub.visualization import (  # noqa: E402
+    build_overlay_gif,
     plot_frame_counts,
     plot_gt_overlay,
     plot_intensity_histogram,
     plot_lineage_graph,
+    plot_lineage_timeline,
     plot_slice_overlay,
+    plot_temporal_montage,
+    plot_track_overlay,
     plot_volume_slices,
 )
 
@@ -45,8 +49,36 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-    .block-container {padding-top: 1.2rem; max-width: 1200px;}
-    h1 {font-weight: 600; letter-spacing: -0.02em;}
+    /* Main content spacing */
+    .block-container {
+        padding-top: 1rem;
+        padding-bottom: 2rem;
+        max-width: 1400px;
+    }
+    h1 { font-weight: 600; letter-spacing: -0.02em; }
+
+    /* Keep tab navigation visible while scrolling main content */
+    div[data-testid="stTabs"] > div:first-child {
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+        background: var(--background-color, #ffffff);
+        border-bottom: 1px solid rgba(49, 51, 63, 0.12);
+        padding-top: 0.25rem;
+        padding-bottom: 0.35rem;
+        margin-bottom: 0.5rem;
+    }
+    div[data-testid="stTabs"] button[data-baseweb="tab"] {
+        font-weight: 500;
+    }
+    div[data-testid="stTabs"] button[data-baseweb="tab"][aria-selected="true"] {
+        border-bottom: 2px solid #3366AA;
+    }
+
+    /* Prevent sidebar from overlapping main tab bar on narrow viewports */
+    section[data-testid="stSidebar"] {
+        z-index: 999;
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -76,7 +108,7 @@ def home_tab() -> None:
         1. Set **Dataset root directory** in the sidebar and click **Scan dataset**.
         2. Choose a volume from the dropdown and click **Load volume**.
         3. Inspect raw data under **Volume**, then run **Pipeline**.
-        4. Review detections, lineage, and exports.
+        4. Review detections, lineage animations, and exports.
 
         Use **Synthetic demo** only when no local dataset is available.
         """
@@ -162,8 +194,8 @@ def volume_tab() -> None:
 
     t_max, z_max = vol4d.shape[0] - 1, vol4d.shape[1] - 1
     c1, c2 = st.columns(2)
-    t_idx = c1.slider("Time index", 0, t_max, 0)
-    z_idx = c2.slider("Z slice", 0, z_max, z_max // 2)
+    t_idx = c1.slider("Time index", 0, t_max, 0, key="vol_t")
+    z_idx = c2.slider("Z slice", 0, z_max, z_max // 2, key="vol_z")
     vol = vol4d[t_idx]
 
     if entry is not None and entry.has_geff:
@@ -181,6 +213,17 @@ def volume_tab() -> None:
     st.pyplot(fig_hist, clear_figure=True)
     fig = plot_volume_slices(vol, title=f"{st.session_state.dataset_name} | t={t_idx}", z_idx=z_idx)
     st.pyplot(fig, clear_figure=True)
+
+
+def _division_highlight_coords(result, t_idx: int) -> np.ndarray | None:
+    """Return division-parent coordinates for frame t_idx, or None."""
+    if not result.n_divisions or result.nodes.empty:
+        return None
+    div_parents = set(division_events(result)["source_id"].astype(int))
+    sub = result.nodes[result.nodes["node_id"].isin(div_parents) & (result.nodes["t"] == t_idx)]
+    if sub.empty:
+        return None
+    return sub[["z", "y", "x"]].to_numpy()
 
 
 def pipeline_tab(cfg) -> None:
@@ -219,25 +262,73 @@ def detection_tab() -> None:
     if result is None or vol4d is None:
         st.info("Run the pipeline first.")
         return
-    t_idx = st.slider("Frame", 0, len(result.frames) - 1, 0, key="det_t")
-    z_idx = st.slider("Z slice", 0, vol4d.shape[1] - 1, vol4d.shape[1] // 2, key="det_z")
+
+    t_max = len(result.frames) - 1
+    z_max = vol4d.shape[1] - 1
+    c1, c2 = st.columns(2)
+    t_idx = c1.slider("Frame", 0, t_max, 0, key="det_t")
+    z_idx = c2.slider("Z slice", 0, z_max, z_max // 2, key="det_z")
     frame = result.frames[t_idx]
-    div_parents = set(division_events(result)["source_id"].astype(int)) if result.n_divisions else set()
-    div_coords = []
-    if div_parents and not result.nodes.empty:
-        sub = result.nodes[result.nodes["node_id"].isin(div_parents) & (result.nodes["t"] == t_idx)]
-        if len(sub):
-            div_coords = sub[["z", "y", "x"]].to_numpy()
-    highlight = np.array(div_coords) if div_coords else None
-    fig = plot_slice_overlay(
-        vol4d[t_idx],
+    highlight = _division_highlight_coords(result, t_idx)
+
+    col_a, col_b = st.columns(2)
+    with col_a:
+        fig = plot_slice_overlay(
+            vol4d[t_idx],
+            z_idx,
+            frame.coords,
+            title=f"Detections at t={t_idx}",
+            highlight_divisions=highlight,
+        )
+        st.pyplot(fig, clear_figure=True)
+        st.caption(f"{len(frame.coords)} detections in this frame.")
+
+    with col_b:
+        if t_idx < t_max:
+            next_frame = result.frames[t_idx + 1]
+            curr_ids = set(frame.node_ids)
+            next_ids = set(next_frame.node_ids)
+            links = [
+                (int(row.source_id), int(row.target_id))
+                for row in result.edges.itertuples(index=False)
+                if int(row.source_id) in curr_ids and int(row.target_id) in next_ids
+            ]
+            fig_links = plot_track_overlay(
+                vol4d[t_idx],
+                frame.coords,
+                next_frame.coords,
+                links,
+                z_idx,
+                vol_b=vol4d[t_idx + 1],
+                title=f"Links t={t_idx} → t={t_idx + 1}",
+            )
+            st.pyplot(fig_links, clear_figure=True)
+        else:
+            st.info("Select an earlier frame to view inter-frame links.")
+
+    st.markdown("**Temporal montage**")
+    fig_montage = plot_temporal_montage(
+        vol4d,
+        result.frames,
         z_idx,
-        frame.coords,
-        title=f"Detections at t={t_idx}",
-        highlight_divisions=highlight,
+        title=f"Detection montage (z={z_idx})",
     )
-    st.pyplot(fig, clear_figure=True)
-    st.caption(f"{len(frame.coords)} detections in this frame.")
+    st.pyplot(fig_montage, clear_figure=True)
+
+    st.markdown("**Time-lapse animation**")
+    fps = st.slider("GIF frame rate (fps)", 2, 12, 4, key="gif_fps")
+    if st.button("Generate overlay animation", key="gen_gif"):
+        with st.spinner("Rendering GIF…"):
+            gif_bytes = build_overlay_gif(vol4d, result.frames, z_idx, fps=fps)
+            st.session_state.overlay_gif = gif_bytes
+    if st.session_state.get("overlay_gif"):
+        st.image(st.session_state.overlay_gif, caption=f"Detection overlay, z={z_idx}")
+        st.download_button(
+            "Download animation (GIF)",
+            data=st.session_state.overlay_gif,
+            file_name=f"{st.session_state.dataset_name}_overlay_z{z_idx}.gif",
+            mime="image/gif",
+        )
 
 
 def lineage_tab() -> None:
@@ -246,8 +337,15 @@ def lineage_tab() -> None:
     if result is None:
         st.info("Run the pipeline first.")
         return
-    fig = plot_lineage_graph(result)
-    st.pyplot(fig, clear_figure=True)
+
+    col_a, col_b = st.columns(2)
+    with col_a:
+        fig = plot_lineage_graph(result)
+        st.pyplot(fig, clear_figure=True)
+    with col_b:
+        fig_tl = plot_lineage_timeline(result)
+        st.pyplot(fig_tl, clear_figure=True)
+
     divs = division_events(result)
     st.markdown("**Division events**")
     if divs.empty:
@@ -285,14 +383,15 @@ def exports_tab(cfg) -> None:
     st.caption(f"Saved to `{csv_path}` and `{json_path}`.")
 
 
-# Sidebar
+# Main layout: tabs first in the content area, sidebar configured below.
+tabs = st.tabs(["Home", "Dataset", "Volume", "Pipeline", "Detection", "Lineage", "Exports"])
+
 with st.sidebar:
     render_dataset_sidebar()
     cfg, _mode, preview_frames = sidebar_settings(st.session_state.cfg)
     st.session_state.cfg = cfg
     st.session_state.preview_frames = preview_frames
 
-tabs = st.tabs(["Home", "Dataset", "Volume", "Pipeline", "Detection", "Lineage", "Exports"])
 with tabs[0]:
     home_tab()
 with tabs[1]:
