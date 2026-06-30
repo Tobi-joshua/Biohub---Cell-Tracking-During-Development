@@ -71,6 +71,9 @@ def build_cells() -> list[dict]:
 Self-contained notebook generated from `src/biohub/`.  
 Regenerate locally: `python scripts/build_notebook.py`
 
+**Version 6** uses the **v4 competition baseline** (leaderboard 0.659).  
+v1.5 experiments are disabled by default — see `EXPERIMENTS.md`.
+
 **Steps**
 1. Add the Biohub dataset to this notebook.
 2. Run all cells.
@@ -80,7 +83,7 @@ Regenerate locally: `python scripts/build_notebook.py`
 |---------|---------|
 | Output | `submission.csv` |
 | Tuning | density calibration on train; optional grid search |
-| Pipeline | v{PIPELINE_VERSION} gap closing + soft prune |
+| Preset | v4 competition baseline (v1.5 features off) |
 """
         )
     )
@@ -146,19 +149,12 @@ Set `run_hyperparameter_search=True` only if you have spare runtime (train grid 
 CFG = Config()
 CFG.resolve_paths()
 
-# --- Tweak submission settings here ---
-CFG = CFG.copy_with(
-    thresh_rel=0.30,
-    max_link_dist_um=11.0,
-    div_parent_dist_um=12.0,
-    div_sister_dist_um=7.5,
-    gap_close_enabled=True,
-    gap_close_dist_um=15.0,
-    prune_soft_neighbors=True,
-    run_hyperparameter_search=False,
-    hyperparam_sample_limit=3,
-    hyperparam_frames=4,
-)
+# --- Version 6: v4 competition baseline (0.659) ---
+# v1.5 features (gap close, soft prune, symmetry) default OFF — see EXPERIMENTS.md
+CFG = CFG.competition_v4_preset()
+
+# Optional overrides (tune one knob at a time after hyperparameter search):
+# CFG = CFG.copy_with(thresh_rel=0.30, max_link_dist_um=11.0)
 
 print(f"Pipeline v{{PIPELINE_VERSION}}")
 print(f"train: {{CFG.train_dir}}")

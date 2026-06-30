@@ -11,7 +11,7 @@ import numpy as np
 # Physical voxel spacing (Z, Y, X) in micrometers.
 SCALE: Tuple[float, float, float] = (1.625, 0.40625, 0.40625)
 MATCH_GATE_UM: float = 7.0
-PIPELINE_VERSION: str = "1.5"
+PIPELINE_VERSION: str = "1.6"
 
 
 @dataclass
@@ -71,15 +71,15 @@ class Config:
     div_midpoint_dist_um: float = 9.0
 
     prune_isolated_nodes: bool = True
-    prune_soft_neighbors: bool = True
+    # v1.5 experiments (disabled by default — regressed leaderboard v5 vs v4)
+    prune_soft_neighbors: bool = False
     prune_neighbor_dist_um: float = 9.0
-
-    # Gap closing (link across one missed frame)
-    gap_close_enabled: bool = True
+    gap_close_enabled: bool = False
     gap_close_dist_um: float = 15.0
+    div_symmetry_weight: float = 0.0
 
-    # Division scoring
-    div_symmetry_weight: float = 0.35
+    # Use competition preset for batch submission (matches v4 @ 0.659)
+    use_competition_preset: bool = True
 
     # Tuning
     run_hyperparameter_search: bool = False
@@ -135,3 +135,16 @@ class Config:
 
     def copy_with(self, **kwargs) -> "Config":
         return replace(self, **kwargs)
+
+    def competition_v4_preset(self) -> "Config":
+        """
+        Leaderboard v4 baseline (public score 0.659).
+
+        Disables v1.5 features that correlated with the v5 regression (0.648).
+        """
+        return self.copy_with(
+            gap_close_enabled=False,
+            prune_soft_neighbors=False,
+            div_symmetry_weight=0.0,
+            use_adaptive_frame_threshold=False,
+        )

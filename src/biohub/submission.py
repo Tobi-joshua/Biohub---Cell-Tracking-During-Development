@@ -224,6 +224,8 @@ def process_dataset(
 def build_submission(cfg: Optional[Config] = None) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Process all test datasets and write a combined lineage CSV."""
     cfg = cfg or Config()
+    if cfg.use_competition_preset:
+        cfg = cfg.competition_v4_preset()
     cfg.resolve_paths()
     if cfg.test_dir is None:
         raise FileNotFoundError("Test directory not found")

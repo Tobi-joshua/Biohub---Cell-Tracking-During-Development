@@ -2,6 +2,25 @@
 
 All notable changes to **Biohub Cell Lineage Tracker** are documented here.
 
+## [1.6.0] — 2026-06-30 (Sprint 2 — competition)
+
+### Changed
+- **Default submission preset reverts to v4 baseline** (leaderboard 0.659)
+- v1.5 features (`gap_close`, `soft prune`, `div symmetry`, adaptive retry) **default OFF**
+- `Config.competition_v4_preset()` and `use_competition_preset=True` in `build_submission()`
+- Notebook v6 uses v4 preset; see `EXPERIMENTS.md` for V4 vs V5 analysis
+
+### Added
+- `scripts/run_diagnostics.py` — local diagnostic plots (v4 vs v5 preset compare)
+- `EXPERIMENTS.md` — evidence-based engineering log
+- `docs/SPRINT2_ENGINEERING_REPORT.md` — full Sprint 2 phases 1–11 report
+
+### Not changed
+- Streamlit app (Track B) — experimental flags available via `Config.copy_with()`
+- Core algorithms remain; only defaults and submission path preset
+
+---
+
 ## [1.0.0] — 2026-06-30
 
 Publication release.
