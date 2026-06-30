@@ -66,6 +66,77 @@ The app also accepts a split directory (`.../train`) or a flat folder of `.zarr`
 
 No remote download or API credentials are required.
 
+## Run in VS Code
+
+### 1. Clone and open
+
+```bash
+git clone https://github.com/Tobi-joshua/Biohub---Cell-Tracking-During-Development.git
+cd Biohub---Cell-Tracking-During-Development
+code .
+```
+
+### 2. Create the virtual environment
+
+**Terminal → New Terminal** in VS Code:
+
+```bash
+python -m venv .venv
+```
+
+Activate it:
+
+| OS | Command |
+|----|---------|
+| Windows (PowerShell) | `.venv\Scripts\Activate.ps1` |
+| Windows (cmd) | `.venv\Scripts\activate.bat` |
+| macOS / Linux | `source .venv/bin/activate` |
+
+When prompted, select the `.venv` interpreter:  
+`Ctrl+Shift+P` → **Python: Select Interpreter** → `.venv`
+
+### 3. Install dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 4. Start the app
+
+**Option A — integrated terminal (simplest)**
+
+```bash
+streamlit run app.py
+```
+
+VS Code may show a popup to open `http://localhost:8501` in the browser.
+
+**Option B — Run and Debug**
+
+1. Open **Run and Debug** (`Ctrl+Shift+D`)
+2. Choose **Streamlit: Biohub App**
+3. Press **F5**
+
+### 5. Load your data in the app
+
+1. Sidebar → **Local Biohub dataset**
+2. **Dataset root directory** → absolute path to your downloaded folder, e.g.  
+   `C:\data\biohub-cell-tracking-during-development` (Windows) or  
+   `/home/you/data/biohub-cell-tracking-during-development` (Linux/macOS)
+3. **Scan dataset** → pick a volume → **Load volume**
+4. **Pipeline** tab → **Run detection and tracking**
+
+If you do not have the dataset yet, use **Synthetic demo** in the sidebar to try the interface.
+
+### Troubleshooting
+
+| Issue | Fix |
+|-------|-----|
+| `ModuleNotFoundError: biohub` | Run from repo root; ensure `PYTHONPATH=src` or use the `.vscode` settings included in this repo |
+| `blosc2` / `zarr` errors | `pip install -r requirements.txt` inside `.venv` |
+| Scan finds 0 volumes | Path must contain `train/` or `test/` with `*.zarr` folders |
+| App opens but is blank | Check the terminal for errors; try another browser tab |
+
 ## Generate figures for the paper
 
 ```bash
