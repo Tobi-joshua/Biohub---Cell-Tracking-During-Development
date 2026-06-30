@@ -7,11 +7,13 @@ Evidence-based engineering log for the classical competition pipeline.
 | Notebook version | Public score | Pipeline basis |
 |------------------|-------------|----------------|
 | V2 | 0.607 | Early v1.x calibration |
-| **V4** | **0.659** | **v1.4 — current best** |
+| **V4** | **0.659** | **v1.4 baseline** |
 | V5 | 0.648 | v1.5 — **regression** |
-| V6 (target) | TBD | v4 baseline + one-knob tuning |
+| **V7** | **0.659** | **v1.6 v4 preset — regression recovered** ✅ |
 
-**Rule:** Do not add features without A/B evidence. V6 is built on V4, not V5.
+**Rule:** Do not add features without A/B evidence. V7 confirms Sprint 2 hypothesis: revert v1.5 defaults, keep v4 behavior.
+
+**Action:** Select **V4** and **V7** (both 0.659) as your two auto-selection candidates on Kaggle.
 
 ---
 
@@ -166,6 +168,7 @@ CFG = Config(use_competition_preset=False).copy_with(
 | Action | Estimate |
 |--------|----------|
 | V6 = V4 preset | **~0.659** (recover V5 regression) |
-| + tuned thresh_rel / link gate | +0.005–0.02 |
+| V7 submitted (confirmed) | **0.659** ✅ matches V4 |
+| + tuned thresh_rel / link gate | +0.005–0.02 (next experiment) |
 
 Validate with **one submission** (V6). Do not batch multiple changes.
