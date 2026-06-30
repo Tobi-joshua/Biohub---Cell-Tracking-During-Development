@@ -1,5 +1,7 @@
 # Figures for the paper
 
+**Live app (for UI screenshots):** https://bioapp---cell-tracking-during-development-ezpjtah7icn2tfr8tie4.streamlit.app/
+
 ## Auto-generated (run from repo root)
 
 ```bash

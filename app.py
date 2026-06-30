@@ -17,6 +17,9 @@ import streamlit as st
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT / "src"))
 
+LIVE_APP_URL = "https://bioapp---cell-tracking-during-development-ezpjtah7icn2tfr8tie4.streamlit.app/"
+REPO_URL = "https://github.com/Tobi-joshua/Biohub---Cell-Tracking-During-Development"
+
 from app.ui import (  # noqa: E402
     init_session,
     render_dataset_sidebar,
@@ -86,6 +89,11 @@ init_session()
 
 def home_tab() -> None:
     st.title("Biohub Cell Lineage Tracker")
+    link_col1, link_col2 = st.columns(2)
+    with link_col1:
+        st.link_button("Open live app", LIVE_APP_URL, use_container_width=True)
+    with link_col2:
+        st.link_button("View source on GitHub", REPO_URL, use_container_width=True)
     st.markdown(
         """
         Interactive analysis for **3D time-lapse fluorescence microscopy** and

@@ -1,4 +1,4 @@
-"""End-to-end pipeline and submission writer."""
+"""Batch pipeline for exporting lineage CSV across multiple test volumes."""
 
 from __future__ import annotations
 
@@ -214,7 +214,7 @@ def process_dataset(
 
 
 def build_submission(cfg: Optional[Config] = None) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    """Process all test datasets and write submission.csv."""
+    """Process all test datasets and write a combined lineage CSV."""
     cfg = cfg or Config()
     cfg.resolve_paths()
     if cfg.test_dir is None:

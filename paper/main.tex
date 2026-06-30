@@ -33,7 +33,9 @@
 
 \title{Biohub Cell Lineage Tracker: An Open Pipeline and Interactive System for 3D Cell Tracking During Development}
 
-\author{Tobi-Joshua Samuel}
+\author{Tobi-Joshua Samuel%
+\thanks{Live application: \url{https://bioapp---cell-tracking-during-development-ezpjtah7icn2tfr8tie4.streamlit.app/}.%
+Source code: \url{https://github.com/Tobi-joshua/Biohub---Cell-Tracking-During-Development}.}}
 
 \maketitle
 
@@ -42,9 +44,10 @@ Three-dimensional time-lapse microscopy is a central tool for studying cell beha
 Recovering accurate cell positions and lineage relationships from fluorescence volumes remains difficult because cells move, divide, overlap, and vary in intensity.
 We present Biohub Cell Lineage Tracker, an open-source pipeline and interactive analysis application for detecting cells in 3D frames, linking them across time, and reconstructing lineage graphs with division events.
 The system combines anisotropy-aware classical peak detection, Hungarian assignment with multi-cue linking costs, and conservative mitosis inference.
-A Streamlit interface enables inspection of raw volumes, detection overlays, temporal montages, track timelines, animated GIF exports, and graph tables suitable for publication.
+A publicly hosted Streamlit application enables inspection of raw volumes, detection overlays, temporal montages, track timelines, animated GIF exports, and graph tables suitable for publication without local installation.
 We describe the data model, algorithmic design, software architecture, and qualitative behavior on synthetic and zebrafish-style microscopy volumes.
 The implementation is modular and extensible to learned detectors.
+The live demo is available at \url{https://bioapp---cell-tracking-during-development-ezpjtah7icn2tfr8tie4.streamlit.app/}.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -220,6 +223,13 @@ Learned detection is scaffolded but not yet bundled with pretrained weights.
 
 \section{Future Work}
 Planned extensions include marker-controlled watershed splitting, gap closing across multiple frames, integration of Cellpose or StarDist checkpoints, and benchmark metrics against dense lineage annotations when available.
+
+\section{Availability}
+The interactive application is publicly accessible at\\
+\url{https://bioapp---cell-tracking-during-development-ezpjtah7icn2tfr8tie4.streamlit.app/}.
+No account or local installation is required; users can load the bundled synthetic demo or upload a NumPy volume from the sidebar.
+Source code, documentation, and figure-generation scripts are available at\\
+\url{https://github.com/Tobi-joshua/Biohub---Cell-Tracking-During-Development}.
 
 \section{Conclusion}
 Biohub Cell Lineage Tracker provides a transparent 3D cell tracking pipeline and an interactive environment for visual inspection and export.
