@@ -207,7 +207,14 @@ def hyperparameter_search(
             best_score = mean_score
             best_cfg = trial.copy_with(**params)
 
-    results = pd.DataFrame(rows).sort_values("mean_score", ascending=False)
+    results = pd.DataFrame(rows)
+    baseline_rows = results[results["candidate"] == "baseline"]
+    if len(baseline_rows):
+        baseline_score = float(baseline_rows.iloc[0]["mean_score"])
+        results["delta_vs_baseline"] = results["mean_score"] - baseline_score
+    else:
+        results["delta_vs_baseline"] = np.nan
+    results = results.sort_values("mean_score", ascending=False)
     return best_cfg, results
 
 
