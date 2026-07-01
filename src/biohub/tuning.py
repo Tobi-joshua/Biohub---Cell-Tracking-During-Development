@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import time
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Iterable, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -206,6 +206,108 @@ def hyperparameter_search(
         if mean_score > best_score:
             best_score = mean_score
             best_cfg = trial.copy_with(**params)
+
+    results = pd.DataFrame(rows).sort_values("mean_score", ascending=False)
+    return best_cfg, results
+
+
+def single_knob_candidates() -> List[Dict[str, float]]:
+    """
+    Low-risk one-parameter candidates for post-v4 leaderboard optimization.
+
+    These avoid v1.5 regression flags (gap close, soft prune, division symmetry)
+    and keep each trial attributable to exactly one parameter.
+    """
+    return [
+        {},
+        {"max_link_dist_um": 9.5},
+        {"max_link_dist_um": 10.0},
+        {"max_link_dist_um": 10.5},
+        {"max_link_dist_um": 11.5},
+        {"thresh_rel": 0.26},
+        {"thresh_rel": 0.28},
+        {"thresh_rel": 0.32},
+        {"thresh_rel": 0.34},
+        {"nms_radius_um": 2.50},
+        {"nms_radius_um": 2.80},
+        {"div_parent_dist_um": 11.0},
+        {"div_parent_dist_um": 13.0},
+        {"div_sister_dist_um": 7.0},
+        {"div_sister_dist_um": 8.0},
+    ]
+
+
+def _candidate_name(params: Dict[str, float]) -> Tuple[str, str, float | None]:
+    if not params:
+        return "baseline", "baseline", None
+    if len(params) != 1:
+        raise ValueError(f"Expected one-parameter candidate, got {params}")
+    knob, value = next(iter(params.items()))
+    return f"{knob}={value}", knob, float(value)
+
+
+def single_knob_sweep(
+    train_dir: Path,
+    cfg: Config,
+    sample_limit: int = 5,
+    frames: int = 6,
+    candidates: Optional[Iterable[Dict[str, float]]] = None,
+) -> Tuple[Config, pd.DataFrame]:
+    """
+    Score low-risk one-knob candidates on sparse train labels.
+
+    The public leaderboard is still the final judge, but this avoids blind
+    manual trials by ranking candidates with the same proxy used for local
+    hyperparameter search.
+    """
+    names = list_datasets(train_dir)[:sample_limit]
+    if not names:
+        return cfg, pd.DataFrame()
+
+    rows: List[dict] = []
+    best_cfg = cfg
+    best_score = -1.0
+    candidate_list = list(candidates) if candidates is not None else single_knob_candidates()
+
+    for params in candidate_list:
+        candidate, knob, value = _candidate_name(params)
+        trial = cfg.copy_with(**params)
+        # Explicit threshold trials must not be overwritten by later density calibration.
+        if knob == "thresh_rel":
+            trial = trial.copy_with(run_density_calibration=False)
+
+        t0 = time.time()
+        scores = [score_config_on_sample(train_dir, n, trial, frames) for n in names]
+        runtime_s = time.time() - t0
+        mean_score = float(np.nanmean([s["score"] for s in scores]))
+        mean_recall = float(np.nanmean([s["recall"] for s in scores]))
+        mean_edge = float(np.nanmean([s["edge_proxy"] for s in scores]))
+        mean_divisions = float(np.nanmean([s["divisions"] for s in scores]))
+        row = {
+            "candidate": candidate,
+            "knob": knob,
+            "value": value,
+            "mean_score": mean_score,
+            "mean_recall": mean_recall,
+            "mean_edge_proxy": mean_edge,
+            "mean_divisions": mean_divisions,
+            "runtime_s": round(runtime_s, 2),
+            "n_samples": len(names),
+            "frames": frames,
+            "run_density_calibration": trial.run_density_calibration,
+        }
+        for k in (
+            "thresh_rel",
+            "max_link_dist_um",
+            "nms_radius_um",
+            "div_parent_dist_um",
+            "div_sister_dist_um",
+        ):
+            row[k] = getattr(trial, k)
+        rows.append(row)
+        if mean_score > best_score:
+            best_score = mean_score
+            best_cfg = trial
 
     results = pd.DataFrame(rows).sort_values("mean_score", ascending=False)
     return best_cfg, results

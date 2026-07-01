@@ -15,6 +15,7 @@ All notable changes to **Biohub Cell Lineage Tracker** are documented here.
 - `scripts/run_diagnostics.py` — local diagnostic plots (v4 vs v5 preset compare)
 - `EXPERIMENTS.md` — evidence-based engineering log
 - `docs/SPRINT2_ENGINEERING_REPORT.md` — full Sprint 2 phases 1–11 report
+- `scripts/run_single_knob_sweep.py` and notebook sweep cells for safer V8+ tuning
 
 ### Not changed
 - Streamlit app (Track B) — experimental flags available via `Config.copy_with()`

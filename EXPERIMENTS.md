@@ -87,6 +87,20 @@ Output: `results/hyperparameter_search.csv`
 
 Apply **one** parameter change per submission attempt. Compare against V4 baseline.
 
+### Single-knob sweep (recommended after V7)
+
+```bash
+python scripts/run_single_knob_sweep.py --train-dir /path/to/train --samples 5 --frames 6
+```
+
+Output: `results/single_knob_sweep.csv`
+
+The Kaggle notebook now runs the same low-risk sweep by default and can apply
+the best proxy candidate automatically. Manual overrides are guarded so only
+one parameter can change. Explicit `thresh_rel` overrides disable density
+calibration; otherwise `build_submission()` would recalibrate the threshold
+back to the train-density choice (for example 0.26).
+
 ---
 
 ## Phase 9 — Local diagnostics
