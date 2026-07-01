@@ -101,6 +101,12 @@ one parameter can change. Explicit `thresh_rel` overrides disable density
 calibration; otherwise `build_submission()` would recalibrate the threshold
 back to the train-density choice (for example 0.26).
 
+If `mean_score`, `mean_recall`, and `mean_edge_proxy` are all `NaN`, GEFF
+labels were not found/readable in the runtime. Treat that table as
+non-diagnostic; do not use it to pick a winner. In that case, keep V7 as the
+known baseline and only spend leaderboard submissions on one clearly defined
+manual candidate at a time.
+
 ---
 
 ## Phase 9 — Local diagnostics

@@ -34,6 +34,13 @@ def main() -> None:
 
     print("\nTop candidates:")
     print(table.head(10).to_string(index=False))
+    if table.empty or table["mean_score"].isna().all():
+        print(
+            "\nNo usable proxy scores were produced. "
+            "Check that GEFF labels are available/readable for the selected train split."
+        )
+        print(f"\nWrote {len(table)} rows to {args.output}")
+        return
     print(
         "\nBest candidate:",
         f"thresh_rel={best.thresh_rel:.3f}",
