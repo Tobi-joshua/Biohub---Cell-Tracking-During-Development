@@ -10,6 +10,7 @@ Full Sprint 2 report: **`docs/SPRINT2_ENGINEERING_REPORT.md`**
 ```bash
 python scripts/build_notebook.py          # v6 notebook, v4 preset
 python scripts/run_diagnostics.py --synthetic --preset v4
+python scripts/run_single_knob_sweep.py --train-dir /path/to/train
 python scripts/run_hyperparameter_search.py --train-dir /path/to/train
 ```
 
