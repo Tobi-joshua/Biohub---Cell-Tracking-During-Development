@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 import numpy as np
 
@@ -79,6 +79,20 @@ def read_estimated_nodes(geff_path: Path) -> float | None:
 
     val = _find(meta)
     return float(val) if val is not None else None
+
+
+def find_geff_path(split_dir: Path, name: str) -> Optional[Path]:
+    """Locate a GEFF graph for ``name`` across common competition layouts."""
+    candidates = [
+        split_dir / f"{name}.geff",
+        split_dir / "geff" / f"{name}.geff",
+        split_dir / "graphs" / f"{name}.geff",
+        split_dir / "labels" / f"{name}.geff",
+        split_dir.parent / "geff" / f"{name}.geff",
+        split_dir.parent / "graphs" / f"{name}.geff",
+        split_dir.parent / "labels" / f"{name}.geff",
+    ]
+    return next((p for p in candidates if p.exists()), None)
 
 
 def load_geff_graph(geff_path: Path):

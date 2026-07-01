@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 
 from biohub.config import Config, MATCH_GATE_UM, SCALE
-from biohub.data import list_datasets, load_geff_graph, load_volume, read_zarr_meta
+from biohub.data import find_geff_path, list_datasets, load_geff_graph, load_volume, read_zarr_meta
 from biohub.detection import detect_cells
 from biohub.tracking import link_frames
 
@@ -64,9 +64,24 @@ def score_config_on_sample(
     n_frames: int = 4,
 ) -> Dict[str, float]:
     """Proxy score on one training sample using sparse GEFF labels."""
-    gt_nodes, gt_edges = load_geff_graph(train_dir / f"{name}.geff")
+    geff_path = find_geff_path(train_dir, name)
+    if geff_path is None:
+        return {
+            "label_available": 0.0,
+            "recall": np.nan,
+            "edge_proxy": np.nan,
+            "divisions": np.nan,
+            "score": np.nan,
+        }
+    gt_nodes, gt_edges = load_geff_graph(geff_path)
     if gt_nodes is None:
-        return {"recall": np.nan, "edge_proxy": np.nan, "divisions": 0.0, "score": np.nan}
+        return {
+            "label_available": 0.0,
+            "recall": np.nan,
+            "edge_proxy": np.nan,
+            "divisions": np.nan,
+            "score": np.nan,
+        }
 
     zarr_path = train_dir / f"{name}.zarr"
     shape, dtype = read_zarr_meta(zarr_path)
@@ -141,7 +156,13 @@ def score_config_on_sample(
     edge_p = float(np.mean(edge_proxies)) if edge_proxies else 0.0
     div_rate = divisions / max(min(n_frames, shape[0]) - 1, 1)
     score = 0.45 * recall + 0.45 * edge_p + 0.10 * min(div_rate, 1.0)
-    return {"recall": recall, "edge_proxy": edge_p, "divisions": float(divisions), "score": score}
+    return {
+        "label_available": 1.0,
+        "recall": recall,
+        "edge_proxy": edge_p,
+        "divisions": float(divisions),
+        "score": score,
+    }
 
 
 def hyperparameter_search(
@@ -194,16 +215,18 @@ def hyperparameter_search(
         trial = cfg.copy_with(**params)
         scores = [score_config_on_sample(train_dir, n, trial, frames) for n in names]
         runtime_s = time.time() - t0
-        mean_score = float(np.nanmean([s["score"] for s in scores]))
+        score_values = [s["score"] for s in scores]
+        mean_score = float(np.nanmean(score_values)) if np.isfinite(score_values).any() else np.nan
         row = {
             **params,
             "mean_score": mean_score,
             "runtime_s": round(runtime_s, 2),
             "n_samples": len(names),
+            "valid_scores": int(np.isfinite(score_values).sum()),
         }
         row.update({f"{k}_{i}": s[k] for i, s in enumerate(scores) for k in ("recall", "edge_proxy")})
         rows.append(row)
-        if mean_score > best_score:
+        if np.isfinite(mean_score) and mean_score > best_score:
             best_score = mean_score
             best_cfg = trial.copy_with(**params)
 
@@ -279,10 +302,16 @@ def single_knob_sweep(
         t0 = time.time()
         scores = [score_config_on_sample(train_dir, n, trial, frames) for n in names]
         runtime_s = time.time() - t0
-        mean_score = float(np.nanmean([s["score"] for s in scores]))
-        mean_recall = float(np.nanmean([s["recall"] for s in scores]))
-        mean_edge = float(np.nanmean([s["edge_proxy"] for s in scores]))
-        mean_divisions = float(np.nanmean([s["divisions"] for s in scores]))
+        score_values = np.array([s["score"] for s in scores], dtype=np.float64)
+        recall_values = np.array([s["recall"] for s in scores], dtype=np.float64)
+        edge_values = np.array([s["edge_proxy"] for s in scores], dtype=np.float64)
+        division_values = np.array([s["divisions"] for s in scores], dtype=np.float64)
+        label_values = np.array([s["label_available"] for s in scores], dtype=np.float64)
+        valid_scores = int(np.isfinite(score_values).sum())
+        mean_score = float(np.nanmean(score_values)) if valid_scores else np.nan
+        mean_recall = float(np.nanmean(recall_values)) if np.isfinite(recall_values).any() else np.nan
+        mean_edge = float(np.nanmean(edge_values)) if np.isfinite(edge_values).any() else np.nan
+        mean_divisions = float(np.nanmean(division_values)) if np.isfinite(division_values).any() else np.nan
         row = {
             "candidate": candidate,
             "knob": knob,
@@ -293,6 +322,8 @@ def single_knob_sweep(
             "mean_divisions": mean_divisions,
             "runtime_s": round(runtime_s, 2),
             "n_samples": len(names),
+            "valid_scores": valid_scores,
+            "labels_found": int(label_values.sum()),
             "frames": frames,
             "run_density_calibration": trial.run_density_calibration,
         }
@@ -305,16 +336,16 @@ def single_knob_sweep(
         ):
             row[k] = getattr(trial, k)
         rows.append(row)
-        if mean_score > best_score:
+        if np.isfinite(mean_score) and mean_score > best_score:
             best_score = mean_score
             best_cfg = trial
 
     results = pd.DataFrame(rows)
     baseline_rows = results[results["candidate"] == "baseline"]
-    if len(baseline_rows):
+    if len(baseline_rows) and np.isfinite(float(baseline_rows.iloc[0]["mean_score"])):
         baseline_score = float(baseline_rows.iloc[0]["mean_score"])
         results["delta_vs_baseline"] = results["mean_score"] - baseline_score
     else:
         results["delta_vs_baseline"] = np.nan
-    results = results.sort_values("mean_score", ascending=False)
+    results = results.sort_values("mean_score", ascending=False, na_position="last")
     return best_cfg, results

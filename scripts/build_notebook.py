@@ -191,36 +191,46 @@ if RUN_SINGLE_KNOB_SWEEP and CFG.train_dir is not None:
     sweep_path = Path("/kaggle/working/single_knob_sweep.csv") if Path("/kaggle/working").is_dir() else Path("single_knob_sweep.csv")
     sweep_table.to_csv(sweep_path, index=False)
     display(sweep_table.head(12))
-    top_candidate = str(sweep_table.iloc[0]["candidate"])
-    non_baseline = sweep_table[sweep_table["candidate"] != "baseline"]
-    best_non_baseline = non_baseline.iloc[0] if len(non_baseline) else None
-    print(
-        "Best proxy candidate:",
-        top_candidate,
-        f"thresh_rel={CFG.thresh_rel:.3f}",
-        f"max_link_dist_um={CFG.max_link_dist_um:.1f}",
-        f"nms={CFG.nms_radius_um:.2f}",
-        f"div_parent={CFG.div_parent_dist_um:.1f}",
-        f"div_sister={CFG.div_sister_dist_um:.1f}",
-        f"density_calibration={CFG.run_density_calibration}",
-    )
-    if best_non_baseline is not None:
+    has_proxy_scores = sweep_table["mean_score"].notna().any()
+    if not has_proxy_scores:
         print(
-            "Best non-baseline candidate:",
-            best_non_baseline["candidate"],
-            f"score={best_non_baseline['mean_score']:.4f}",
-            f"delta_vs_baseline={best_non_baseline['delta_vs_baseline']:.4f}",
+            "No usable train-label proxy scores were produced. "
+            "GEFF labels were not found/readable for these train samples."
         )
-    if top_candidate == "baseline":
-        print("Baseline won the proxy sweep. This will replay V7 unless you choose a non-baseline candidate.")
-        if AUTO_APPLY_BEST_NON_BASELINE_IF_BASELINE_WINS and best_non_baseline is not None:
-            knob = str(best_non_baseline["knob"])
-            CFG = Config().competition_v4_preset()
-            CFG.resolve_paths()
-            CFG = CFG.copy_with(**{knob: float(best_non_baseline["value"])})
-            if knob == "thresh_rel":
-                CFG = CFG.copy_with(run_density_calibration=False)
-            print("Applied best non-baseline candidate:", best_non_baseline["candidate"])
+        print("Keeping V7 baseline. Choose a manual one-knob override only if you want a leaderboard experiment.")
+        CFG = Config().competition_v4_preset()
+        CFG.resolve_paths()
+    else:
+        top_candidate = str(sweep_table.iloc[0]["candidate"])
+        non_baseline = sweep_table[sweep_table["candidate"] != "baseline"]
+        best_non_baseline = non_baseline.iloc[0] if len(non_baseline) else None
+        print(
+            "Best proxy candidate:",
+            top_candidate,
+            f"thresh_rel={CFG.thresh_rel:.3f}",
+            f"max_link_dist_um={CFG.max_link_dist_um:.1f}",
+            f"nms={CFG.nms_radius_um:.2f}",
+            f"div_parent={CFG.div_parent_dist_um:.1f}",
+            f"div_sister={CFG.div_sister_dist_um:.1f}",
+            f"density_calibration={CFG.run_density_calibration}",
+        )
+        if best_non_baseline is not None:
+            print(
+                "Best non-baseline candidate:",
+                best_non_baseline["candidate"],
+                f"score={best_non_baseline['mean_score']:.4f}",
+                f"delta_vs_baseline={best_non_baseline['delta_vs_baseline']:.4f}",
+            )
+        if top_candidate == "baseline":
+            print("Baseline won the proxy sweep. This will replay V7 unless you choose a non-baseline candidate.")
+            if AUTO_APPLY_BEST_NON_BASELINE_IF_BASELINE_WINS and best_non_baseline is not None:
+                knob = str(best_non_baseline["knob"])
+                CFG = Config().competition_v4_preset()
+                CFG.resolve_paths()
+                CFG = CFG.copy_with(**{knob: float(best_non_baseline["value"])})
+                if knob == "thresh_rel":
+                    CFG = CFG.copy_with(run_density_calibration=False)
+                print("Applied best non-baseline candidate:", best_non_baseline["candidate"])
     print(f"Wrote {sweep_path}")
     if not AUTO_APPLY_SWEEP_WINNER:
         CFG = Config().competition_v4_preset()
