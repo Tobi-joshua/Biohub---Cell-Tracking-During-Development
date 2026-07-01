@@ -232,7 +232,10 @@ def build_submission(cfg: Optional[Config] = None) -> Tuple[pd.DataFrame, pd.Dat
 
     if cfg.train_dir is not None:
         cfg, _ = apply_train_tuning(cfg)
-        calibrate_detection(cfg.train_dir, cfg, cfg.eda_sample_limit, cfg.calibration_frames)
+        if cfg.run_density_calibration:
+            calibrate_detection(cfg.train_dir, cfg, cfg.eda_sample_limit, cfg.calibration_frames)
+        else:
+            print(f"Skipping density calibration; using thresh_rel={cfg.thresh_rel:.2f}")
 
     datasets = list_datasets(cfg.test_dir)
     all_rows: List[dict] = []

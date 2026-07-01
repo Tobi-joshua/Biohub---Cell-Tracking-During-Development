@@ -83,6 +83,7 @@ class Config:
 
     # Tuning
     run_hyperparameter_search: bool = False
+    run_density_calibration: bool = True
     hyperparam_sample_limit: int = 3
     hyperparam_frames: int = 4
     hyperparam_results_path: Path = field(default_factory=lambda: Path("results/hyperparameter_search.csv"))

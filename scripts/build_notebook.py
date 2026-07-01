@@ -101,7 +101,7 @@ import warnings
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field, replace
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence, Tuple, Union
+from typing import Dict, Iterable, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -166,10 +166,10 @@ print(f"out:   {{CFG.output_path}}")
     cells.append(
         md(
             """
-## 2. Hyperparameter search (optional, recommended for V8+)
+## 2. Candidate sweep (recommended for V8+)
 
-Grid-searches `thresh_rel`, `max_link_dist_um`, division gates, and `nms_radius_um` on train.  
-Set `RUN_HPARAM_SEARCH = False` to skip and replay V7 faster (~15–30 min saved).
+Ranks safe one-knob candidates on train labels and writes `single_knob_sweep.csv`.  
+This is faster and safer than manual trial-and-error or changing multiple knobs at once.
 """
         )
     )
@@ -177,28 +177,37 @@ Set `RUN_HPARAM_SEARCH = False` to skip and replay V7 faster (~15–30 min saved
     cells.append(
         code(
             """
-RUN_HPARAM_SEARCH = True  # False = skip search (V7 replay)
+RUN_SINGLE_KNOB_SWEEP = True
+AUTO_APPLY_SWEEP_WINNER = True
 
-if RUN_HPARAM_SEARCH and CFG.train_dir is not None:
-    CFG.run_hyperparameter_search = True
-    CFG.hyperparam_sample_limit = 5
-    CFG.hyperparam_frames = 6
-    CFG, hparam_table = apply_train_tuning(CFG)
-    top = hparam_table.sort_values("mean_score", ascending=False)
-    display(top.head(10))
+if RUN_SINGLE_KNOB_SWEEP and CFG.train_dir is not None:
+    CFG, sweep_table = single_knob_sweep(
+        CFG.train_dir,
+        CFG,
+        sample_limit=5,
+        frames=6,
+    )
+    sweep_path = Path("/kaggle/working/single_knob_sweep.csv") if Path("/kaggle/working").is_dir() else Path("single_knob_sweep.csv")
+    sweep_table.to_csv(sweep_path, index=False)
+    display(sweep_table.head(12))
     print(
-        "Best from search:",
+        "Best proxy candidate:",
         f"thresh_rel={CFG.thresh_rel:.3f}",
         f"max_link_dist_um={CFG.max_link_dist_um:.1f}",
+        f"nms={CFG.nms_radius_um:.2f}",
         f"div_parent={CFG.div_parent_dist_um:.1f}",
         f"div_sister={CFG.div_sister_dist_um:.1f}",
-        f"nms={CFG.nms_radius_um:.2f}",
+        f"density_calibration={CFG.run_density_calibration}",
     )
-    CFG.run_hyperparameter_search = False  # do not repeat inside build_submission
+    print(f"Wrote {sweep_path}")
+    if not AUTO_APPLY_SWEEP_WINNER:
+        CFG = Config().competition_v4_preset()
+        CFG.resolve_paths()
+        print("AUTO_APPLY_SWEEP_WINNER=False — reset to V7 baseline")
 elif CFG.train_dir is None:
-    print("No train directory — skipping hyperparameter search")
+    print("No train directory — skipping candidate sweep")
 else:
-    print("Skipping hyperparameter search (RUN_HPARAM_SEARCH=False)")
+    print("Skipping candidate sweep (RUN_SINGLE_KNOB_SWEEP=False)")
 """
         )
     )
@@ -206,10 +215,10 @@ else:
     cells.append(
         md(
             """
-## 3. V8 single-knob override
+## 3. Manual V8 override (optional)
 
-**Rule:** uncomment **exactly one** line below per Kaggle submission.  
-Compare score to V7 (0.659). If worse, revert and try the next knob.
+Use this only if you want to override the sweep winner.  
+**Rule:** keep at most **one** key in `V8_OVERRIDES`. Threshold overrides automatically disable density calibration so they are not overwritten.
 
 | Knob | Typical effect |
 |------|----------------|
@@ -224,7 +233,7 @@ Compare score to V7 (0.659). If worse, revert and try the next knob.
     cells.append(
         code(
             """
-# === V8: uncomment ONE line only ===
+# === Optional manual V8 override: keep at most ONE key ===
 V8_OVERRIDES = {
     # "max_link_dist_um": 10.0,
     # "max_link_dist_um": 10.5,
@@ -237,10 +246,15 @@ V8_OVERRIDES = {
 }
 
 if V8_OVERRIDES:
+    if len(V8_OVERRIDES) != 1:
+        raise ValueError(f"Use exactly one V8 override, got {len(V8_OVERRIDES)}: {V8_OVERRIDES}")
     CFG = CFG.copy_with(**V8_OVERRIDES)
+    if "thresh_rel" in V8_OVERRIDES:
+        CFG = CFG.copy_with(run_density_calibration=False)
+        print("Disabled density calibration so explicit thresh_rel is preserved")
     print("V8 overrides applied:", V8_OVERRIDES)
 else:
-    print("No V8 overrides — using search + calibration defaults (V7 baseline)")
+    print("No manual overrides — using sweep winner if enabled, otherwise V7 baseline")
 """
         )
     )
@@ -250,7 +264,7 @@ else:
             """
 ## 4. Build submission
 
-Runs density calibration on train, then processes all test volumes.
+Runs density calibration when enabled, then processes all test volumes.
 """
         )
     )
