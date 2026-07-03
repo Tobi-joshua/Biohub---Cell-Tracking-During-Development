@@ -11,7 +11,7 @@ import numpy as np
 # Physical voxel spacing (Z, Y, X) in micrometers.
 SCALE: Tuple[float, float, float] = (1.625, 0.40625, 0.40625)
 MATCH_GATE_UM: float = 7.0
-PIPELINE_VERSION: str = "1.6"
+PIPELINE_VERSION: str = "1.7"
 
 
 @dataclass
@@ -24,11 +24,18 @@ class Config:
     output_dir: Path = field(default_factory=lambda: Path("outputs"))
     output_path: Path = field(default_factory=lambda: Path("outputs/lineage_graph.csv"))
 
+  # peaks = Gaussian-smoothed peaks (V7 @ 0.659); peaks_dog = DoG band-pass (V10)
     detector_backend: str = "peaks"
 
     # Detection
     xy_ds: int = 4
     smooth_sigma: float = 1.0
+    # DoG band-pass preprocessing (opt-in — V10 competition experiment)
+    use_dog_bandpass: bool = False
+    dog_sigma_small_um: float = 1.0
+    dog_sigma_large_um: float = 2.8
+    dog_clip_negative: bool = True
+    dog_post_smooth_sigma: float = 0.0
     min_peak_dist: int = 3
     thresh_rel: float = 0.30
     thresh_hi_percentile: float = 99.8
@@ -148,4 +155,22 @@ class Config:
             prune_soft_neighbors=False,
             div_symmetry_weight=0.0,
             use_adaptive_frame_threshold=False,
+            use_dog_bandpass=False,
+            detector_backend="peaks",
+        )
+
+    def competition_v10_dog_preset(self) -> "Config":
+        """
+        V10 experiment: v4 tracking preset + DoG band-pass detection front-end.
+
+        Keeps validated linking/division settings; only changes preprocessing.
+        """
+        return self.competition_v4_preset().copy_with(
+            detector_backend="peaks_dog",
+            use_dog_bandpass=True,
+            dog_sigma_small_um=1.0,
+            dog_sigma_large_um=2.8,
+            dog_clip_negative=True,
+            dog_post_smooth_sigma=0.0,
+            use_competition_preset=False,
         )

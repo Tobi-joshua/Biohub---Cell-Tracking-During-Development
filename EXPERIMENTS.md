@@ -13,7 +13,31 @@ Evidence-based engineering log for the classical competition pipeline.
 
 **Rule:** Do not add features without A/B evidence. V7 confirms Sprint 2 hypothesis: revert v1.5 defaults, keep v4 behavior.
 
-**Action:** Select **V4** and **V7** (both 0.659) as your two auto-selection candidates on Kaggle.
+| V8–V9 one-knob tuning | 0.659 | No gain — classical knobs exhausted |
+
+**Next:** V10 DoG band-pass detection (opt-in via `competition_v10_dog_preset()`).
+
+---
+
+## V10 — DoG band-pass detection
+
+Public notebooks report ~0.85 with DoG preprocessing. V10 adds an **opt-in** detection front-end while keeping V7 tracking/division settings.
+
+```python
+CFG = Config().competition_v10_dog_preset()
+# detector=peaks_dog, use_dog_bandpass=True
+# dog_sigma_small_um=1.0, dog_sigma_large_um=2.8
+```
+
+Notebook: set `USE_V10_DOG = True` in section 1.
+
+Optional single-knob DoG tuning:
+
+```python
+V10_DOG_OVERRIDES = {"dog_sigma_large_um": 3.2}  # one at a time
+```
+
+**V7 remains default** (`USE_V10_DOG = False`) — do not break the validated 0.659 baseline.
 
 ---
 

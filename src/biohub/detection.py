@@ -26,6 +26,41 @@ def block_mean_xy(vol: np.ndarray, factor: int) -> np.ndarray:
     return arr.reshape(z, y2 // factor, factor, x2 // factor, factor).mean(axis=(2, 4))
 
 
+def _anisotropic_sigma_voxels(sigma_um: float, scale_zyx: np.ndarray, xy_ds: int) -> Tuple[float, float, float]:
+    """Convert a physical Gaussian sigma (µm) to voxel sigmas on the XY-downsampled grid."""
+    eff = scale_zyx.astype(np.float64).copy()
+    eff[1] *= xy_ds
+    eff[2] *= xy_ds
+    return tuple(float(sigma_um / s) for s in eff)
+
+
+def dog_bandpass(ds: np.ndarray, cfg: Config) -> np.ndarray:
+    """
+    Difference-of-Gaussians band-pass on the downsampled volume.
+
+    Enhances blob-like bright structures (cell-sized) while suppressing slowly
+    varying background. Used by high-scoring public notebooks (~0.85 LB).
+    """
+    s_small = _anisotropic_sigma_voxels(cfg.dog_sigma_small_um, cfg.scale_array, cfg.xy_ds)
+    s_large = _anisotropic_sigma_voxels(cfg.dog_sigma_large_um, cfg.scale_array, cfg.xy_ds)
+    arr = ds.astype(np.float32, copy=False)
+    g_small = gaussian_filter(arr, sigma=s_small, mode="nearest")
+    g_large = gaussian_filter(arr, sigma=s_large, mode="nearest")
+    dog = g_small - g_large
+    if cfg.dog_clip_negative:
+        dog = np.maximum(dog, 0.0)
+    if cfg.dog_post_smooth_sigma > 0:
+        dog = gaussian_filter(dog, sigma=cfg.dog_post_smooth_sigma, mode="nearest")
+    return dog.astype(np.float32, copy=False)
+
+
+def preprocess_detection_volume(ds: np.ndarray, cfg: Config) -> np.ndarray:
+    """Return the smoothed or band-pass filtered volume used for peak finding."""
+    if cfg.use_dog_bandpass or cfg.detector_backend == "peaks_dog":
+        return dog_bandpass(ds, cfg)
+    return gaussian_filter(ds, sigma=cfg.smooth_sigma, mode="nearest")
+
+
 def robust_threshold(
     sm: np.ndarray,
     cfg: Config,
@@ -270,7 +305,7 @@ def detect_cells(
     Returns integer (z, y, x) coordinates, detector scores, and sampled intensities.
     """
     ds = block_mean_xy(vol, cfg.xy_ds)
-    sm = gaussian_filter(ds, sigma=cfg.smooth_sigma, mode="nearest")
+    sm = preprocess_detection_volume(ds, cfg)
 
     thresh_rel = cfg.thresh_rel
     coords, scores, intensities = _extract_from_sm(sm, vol, cfg, thresh_rel, prev_count)

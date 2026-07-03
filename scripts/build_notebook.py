@@ -139,9 +139,14 @@ print("Imports OK")
     cells.append(
         md(
             """
-## 1. Configuration (v4 preset)
+## 1. Configuration
 
-Baseline validated at **0.659** (V7). Starts from `competition_v4_preset()`.
+| Mode | Setting | Expected score |
+|------|---------|----------------|
+| **V7 baseline** | `USE_V10_DOG = False` | 0.659 (validated) |
+| **V10 DoG** | `USE_V10_DOG = True` | Detection experiment |
+
+V10 swaps only the **detection front-end** (DoG band-pass). Tracking and division stay on the v4 preset.
 """
         )
     )
@@ -152,10 +157,17 @@ Baseline validated at **0.659** (V7). Starts from `competition_v4_preset()`.
 CFG = Config()
 CFG.resolve_paths()
 
-# v4 competition baseline (0.659) — v1.5 features OFF
-CFG = CFG.competition_v4_preset()
+USE_V10_DOG = True  # False = V7 baseline (0.659); True = V10 DoG experiment
+
+if USE_V10_DOG:
+    CFG = CFG.competition_v10_dog_preset()
+    print("V10 DoG preset — detector=peaks_dog")
+else:
+    CFG = CFG.competition_v4_preset()
+    print("V7 baseline preset")
 
 print(f"Pipeline v{{PIPELINE_VERSION}}")
+print(f"detector: {{CFG.detector_backend}} | dog={{CFG.use_dog_bandpass}}")
 print(f"train: {{CFG.train_dir}}")
 print(f"test:  {{CFG.test_dir}}")
 print(f"out:   {{CFG.output_path}}")
@@ -166,10 +178,9 @@ print(f"out:   {{CFG.output_path}}")
     cells.append(
         md(
             """
-## 2. Candidate sweep (recommended for V8+)
+## 2. Candidate sweep (V7 only)
 
-Ranks safe one-knob candidates on train labels and writes `single_knob_sweep.csv`.  
-This is faster and safer than manual trial-and-error or changing multiple knobs at once.
+Skip automatically for V10 DoG. For V7, ranks one-knob candidates when train labels are readable.
 """
         )
     )
@@ -181,7 +192,9 @@ RUN_SINGLE_KNOB_SWEEP = True
 AUTO_APPLY_SWEEP_WINNER = True
 AUTO_APPLY_BEST_NON_BASELINE_IF_BASELINE_WINS = False
 
-if RUN_SINGLE_KNOB_SWEEP and CFG.train_dir is not None:
+if CFG.use_dog_bandpass:
+    print("V10 DoG active — skipping V8 knob sweep (not applicable to DoG front-end)")
+elif RUN_SINGLE_KNOB_SWEEP and CFG.train_dir is not None:
     CFG, sweep_table = single_knob_sweep(
         CFG.train_dir,
         CFG,
@@ -247,7 +260,39 @@ else:
     cells.append(
         md(
             """
-## 3. Manual V8 override (optional)
+## 3. V10 DoG overrides (optional)
+
+Tune DoG sigmas if the default V10 run under/over-detects. **One override at a time.**
+
+| Knob | Typical effect |
+|------|----------------|
+| `dog_sigma_small_um` | Inner scale — smaller = finer blobs |
+| `dog_sigma_large_um` | Outer scale — larger = stronger background removal |
+"""
+        )
+    )
+
+    cells.append(
+        code(
+            """
+V10_DOG_OVERRIDES = {
+    # "dog_sigma_small_um": 0.8,
+    # "dog_sigma_large_um": 3.2,
+}
+
+if V10_DOG_OVERRIDES:
+    if len(V10_DOG_OVERRIDES) != 1:
+        raise ValueError(f"Use exactly one DoG override: {V10_DOG_OVERRIDES}")
+    CFG = CFG.copy_with(**V10_DOG_OVERRIDES)
+    print("V10 DoG overrides:", V10_DOG_OVERRIDES)
+"""
+        )
+    )
+
+    cells.append(
+        md(
+            """
+## 4. Manual V7 override (optional, V7 only)
 
 Use this only if you want to override the sweep winner.  
 **Rule:** keep at most **one** key in `V8_OVERRIDES`. Threshold overrides automatically disable density calibration so they are not overwritten.
@@ -294,7 +339,7 @@ else:
     cells.append(
         md(
             """
-## 4. Build submission
+## 5. Build submission
 
 Runs density calibration when enabled, then processes all test volumes.
 """

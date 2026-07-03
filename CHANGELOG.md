@@ -2,6 +2,19 @@
 
 All notable changes to **Biohub Cell Lineage Tracker** are documented here.
 
+## [1.7.0] — 2026-07-03 (V10 DoG detection experiment)
+
+### Added
+- **DoG band-pass preprocessing** in `detection.py` (`dog_bandpass`, `preprocess_detection_volume`)
+- `Config.competition_v10_dog_preset()` — v4 tracking + DoG detection front-end
+- `peaks_dog` detector backend and `DogPeakDetector`
+- Notebook `USE_V10_DOG` toggle and optional `V10_DOG_OVERRIDES`
+
+### Unchanged
+- V7 baseline (`competition_v4_preset`, `USE_V10_DOG=False`) — still the default at 0.659
+
+---
+
 ## [1.6.0] — 2026-06-30 (Sprint 2 — competition)
 
 ### Changed

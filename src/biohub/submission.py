@@ -242,7 +242,10 @@ def build_submission(cfg: Optional[Config] = None) -> Tuple[pd.DataFrame, pd.Dat
     all_stats = []
     t0 = time.time()
 
-    print(f"Pipeline v{PIPELINE_VERSION} | detector={cfg.detector_backend} | thresh_rel={cfg.thresh_rel:.2f}")
+    print(
+        f"Pipeline v{PIPELINE_VERSION} | detector={cfg.detector_backend} | "
+        f"dog={cfg.use_dog_bandpass} | thresh_rel={cfg.thresh_rel:.2f}"
+    )
 
     for i, name in enumerate(datasets, 1):
         rows, stats = process_dataset(cfg.test_dir, name, cfg)
