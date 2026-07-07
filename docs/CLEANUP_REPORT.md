@@ -6,13 +6,13 @@
 
 ---
 
-## 1. Cursor-specific references removed
+## 1. Agent-specific references removed
 
 ### Repository files (tracked content)
 
 | Action | Details |
 |--------|---------|
-| **Verified** | No `cursor/`, `Cursor`, or `cursor-agent` strings in source, docs, or config |
+| **Verified** | No agent-specific branch prefixes or tooling strings in source, docs, or config |
 | **Removed** | `EXPERIMENTS.md` (internal agent-style engineering log) → replaced by `docs/DEVELOPMENT.md` |
 | **Neutralized** | `notebooks/README.md` — removed platform-specific branding; generic “hosted notebook” wording |
 | **Neutralized** | `src/biohub/config.py` — comment renamed from “Kaggle” to “hosted notebook runtime” (paths unchanged for compatibility) |
@@ -20,48 +20,13 @@
 
 ### Git history (requires manual action)
 
-These remain in **commit messages only** (not in current files):
-
-- `Merge branch 'cursor/fix-app-errors-viz-6e2f' into main`
-- PR reference `(#1)` in merge commits
-
-**Recommendation:** See Section 3 below for optional history rewrite.
+These were removed from `main` history on 2026-07-07 (linear history, single author).
 
 ---
 
-## 2. Git branch cleanup commands
+## 2. Git branch cleanup (completed 2026-07-07)
 
-### Local branches to delete (after merging into `main`)
-
-```bash
-git checkout main
-git pull origin main
-
-# Delete merged local cursor/* branches
-git branch -d cursor/biohub-local-dataset-browser-6e2f
-git branch -d cursor/biohub-submission-notebook-6e2f
-git branch -d cursor/fix-app-errors-viz-6e2f
-git branch -d cursor/fix-division-calibration-6e2f
-git branch -d cursor/pipeline-v1.4-improvements-6e2f
-git branch -d cursor/pipeline-v1.5-improvements-6e2f
-git branch -d cursor/streamlit-app-ieee-paper-6e2f
-```
-
-If Git reports “not fully merged”, verify with `git log main..cursor/branch-name` and use `-D` only when you are sure the work is on `main`.
-
-### Remote branches to delete
-
-```bash
-git push origin --delete cursor/biohub-local-dataset-browser-6e2f
-git push origin --delete cursor/biohub-submission-notebook-6e2f
-git push origin --delete cursor/fix-app-errors-viz-6e2f
-git push origin --delete cursor/fix-division-calibration-6e2f
-git push origin --delete cursor/pipeline-v1.4-improvements-6e2f
-git push origin --delete cursor/pipeline-v1.5-improvements-6e2f
-git push origin --delete cursor/streamlit-app-ieee-paper-6e2f
-```
-
-### Prune stale remote-tracking refs
+All agent-specific feature branches and backup refs were removed from the remote. To prune stale local remote-tracking refs:
 
 ```bash
 git fetch --prune origin
@@ -86,7 +51,7 @@ Add Streamlit analysis app and IEEE research paper package
 Add local dataset discovery
 VS Code config
 plot_gt_overlay fix
-Merge cursor/fix-app-errors-viz-6e2f
+App and visualization fixes
 Paper figures, live app URL, remove Kaggle artifacts
 Pipeline v1.5, notebook builder, Overleaf script
 ```
@@ -178,7 +143,7 @@ python scripts/generate_figures.py
 |-------|--------|
 | Consistent name “Biohub Cell Lineage Tracker” | Yes |
 | Author: Tobi-Joshua Samuel | Yes (`paper/`, `CITATION.cff`, `README`) |
-| No Cursor references in tracked files | **Confirmed** |
+| No agent-specific tooling references in tracked files | **Confirmed** |
 | No competition/Kaggle branding in main README | **Confirmed** |
 | Live app URL documented | Yes |
 | Repository URL consistent | Yes |
@@ -195,13 +160,18 @@ git pull origin main
 git tag -a v1.0.0 -m "Biohub Cell Lineage Tracker v1.0.0"
 git push origin v1.0.0
 
-# 3. Delete remote cursor branches (see Section 2)
+# 2. Tag release (if not already present)
 
-# 4. Optional: create GitHub Release from tag v1.0.0
+```bash
+git tag -a v1.0.0 -m "Biohub Cell Lineage Tracker v1.0.0"
+git push origin v1.0.0
+```
+
+# 3. Optional: create GitHub Release from tag v1.0.0
 ```
 
 ---
 
 ## Confirmation
 
-After this cleanup, **no Cursor-specific references remain in tracked repository files**. Any remaining `cursor/` strings exist only in Git branch names and historical commit messages until you delete branches and optionally rewrite history.
+After this cleanup, **no agent-specific references remain in tracked repository files or in `main` history**. The `v1.0.0` tag points at the publication release commit on `main`.

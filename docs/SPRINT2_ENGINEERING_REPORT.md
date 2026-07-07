@@ -209,5 +209,5 @@ The notebook calls `CFG.competition_v4_preset()` before `build_submission(CFG)`,
 
 | Track | Scope | Branch strategy |
 |-------|-------|-----------------|
-| **A — Competition** | Preset, notebook, tuning, `EXPERIMENTS.md` | `cursor/sprint-v6-competition-6e2f` |
+| **A — Competition** | Preset, notebook, tuning, `EXPERIMENTS.md` | `feature/sprint-v6-competition` |
 | **B — Research** | Streamlit, paper, publication docs on `main` | Keep stable; no experimental defaults |
