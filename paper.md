@@ -8,12 +8,14 @@ tags:
   - image analysis
   - Streamlit
 authors:
-  - name: Tobi-Joshua Samuel
+  - name: Tobi Joshua Samuel
+    orcid: 0009-0007-1850-1726
     affiliation: 1
     corresponding: true
+    email: tobilobasam3@gmail.com
 affiliations:
   - index: 1
-    name: Independent Researcher, Nigeria
+    name: Independent Researcher, Ibadan, Nigeria
 date: 24 October 2026
 bibliography: paper.bib
 ---
