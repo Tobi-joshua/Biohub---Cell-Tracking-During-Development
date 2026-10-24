@@ -202,6 +202,9 @@ Full steps: [`paper/OVERLEAF.md`](paper/OVERLEAF.md)
 
 See `docs/DEVELOPMENT.md` and `CHANGELOG.md` for pipeline tuning notes.
 
+For a **deterministic synthetic walkthrough** (install, pytest, expected outputs, limitations), see [`docs/REPRODUCIBLE_EXAMPLE.md`](docs/REPRODUCIBLE_EXAMPLE.md).
+JOSS submission materials on branch `joss-preparation` include `paper.md`, `paper.bib`, and [`docs/JOSS_ELIGIBILITY_GAPS.md`](docs/JOSS_ELIGIBILITY_GAPS.md).
+
 ### Batch submission notebook
 
 ```bash

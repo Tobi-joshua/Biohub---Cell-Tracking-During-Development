@@ -55,11 +55,16 @@ def to_graph_json(result: AnalysisResult) -> dict:
     if not result.edges.empty:
         for row in result.edges.itertuples(index=False):
             edges.append({"source": int(row.source_id), "target": int(row.target_id)})
+    stats = dict(result.stats)
+    shape = stats.get("shape")
+    if isinstance(shape, tuple):
+        stats["shape"] = list(shape)
+
     return {
         "dataset": result.dataset_name,
         "nodes": nodes,
         "edges": edges,
-        "stats": result.stats,
+        "stats": stats,
     }
 
 
