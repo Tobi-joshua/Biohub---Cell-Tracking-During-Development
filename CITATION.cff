@@ -21,10 +21,10 @@ keywords:
 preferred-citation:
   type: article
   title: >-
-    Biohub Cell Lineage Tracker: An Open Pipeline and Interactive System for 3D
-    Cell Tracking During Development
+    Biohub Cell Lineage Tracker: An open pipeline and interactive system for 3D
+    cell tracking during development
   authors:
     - family-names: Samuel
       given-names: Tobi Joshua
   year: 2026
-  notes: IEEE-style manuscript in paper/main.tex; JOSS paper.md on branch joss-preparation
+  notes: JOSS paper.md on branch joss-preparation; IEEE companion in paper/main.tex
