@@ -48,7 +48,8 @@ This repository **builds** an integrated Python 3 stack—`src/biohub/` modules,
 
 Volumes are stored as uint16 Zarr arrays with shape $(T,Z,Y,X)$ and anisotropic voxel spacing $s_z=1.625\,\mu\mathrm{m}$, $s_y=s_x=0.40625\,\mu\mathrm{m}$ (`SCALE` in `biohub.config`).
 Optional training annotations live in GEFF graph directories with sparse centroid labels; a missing label does not imply absence of a cell.
-All hyperparameters—detection thresholds, physical non-maximum suppression radii, linking weights, and division gates—live in a dataclass `Config`, which supports immutable overrides via `copy_with()` and documents a `competition_v4_preset()` aligned with the maintainer’s logged public leaderboard score of 0.659 on the Biohub challenge (`EXPERIMENTS.md`).
+All hyperparameters—detection thresholds, physical non-maximum suppression radii, linking weights, and division gates—live in a dataclass `Config`, which supports immutable overrides via `copy_with()` and documents a `competition_v4_preset()` used for Biohub Cell Tracking During Development submissions (`EXPERIMENTS.md`).
+
 ## Detection pipeline
 
 Detection operates per frame in `detect_cells()` (`biohub.detection`).
@@ -115,23 +116,26 @@ Division inference may miss oblique or overlapping mitoses.
 The companion IEEE manuscript (`paper/main.tex`; author PDF) describes the default Gaussian peak path; code additionally exposes DoG detection, adaptive thresholds, gap closing, soft pruning, and division symmetry weighting (mostly off in `competition_v4_preset()`).
 IEEE “Future work” items such as watershed splitting are not implemented.
 Zebrafish-style qualitative figures require user-downloaded volumes; train/test Zarr are not redistributed here.
-The logged leaderboard score **0.659** appears only in `EXPERIMENTS.md`—not verified by tests or embedded permalinks.
 
 # Research impact statement
 
-Use documented in-repo includes Biohub challenge participation (`EXPERIMENTS.md`, logged public score **0.659** with the v4/v7 preset), a public Streamlit demo (`README.md`), companion IEEE-format methods text (`paper/main.tex`), figure scripts, pytest on synthetic data, and CI that compiles this paper.
-No third-party publications or independent lab adoptions are listed in repository metadata.
+Demonstrated research use to date is primarily by the developer on the Biohub Cell Tracking During Development task: the author reports an author-verified **public leaderboard score of 0.659** on the Kaggle-hosted competition (competition metric from the v4/v7 classical preset; documented in `EXPERIMENTS.md`).
+That figure reflects the challenge scoring system—not classification accuracy, independent validation, or comparison against other entrants unless explicitly reported elsewhere.
+Seven automated pytest cases on synthetic Gaussian-blob data verify detection, linking, division inference, and export behaviour separately from competition scoring.
+
+Under current JOSS scope, substantive use by the software author in a research context can support eligibility alongside community-ready materials; independent adoption by other groups remains desirable and is not yet recorded in repository metadata.
+Additional signals include a public Streamlit demo (`README.md`), companion IEEE-format methods text (`paper/main.tex`), reproducible figure scripts, and GitHub Actions that compile this paper and run the test suite on the `joss-preparation` branch.
+No third-party publications citing this release are listed in the repository.
 
 # AI usage disclosure
 
-Generative AI assisted preparation of the JOSS materials on the `joss-preparation` branch.
-A Cursor Cloud Agent (Composer) read JOSS requirements, inspected source modules, added pytest suites on synthetic ground truth, drafted and revised `paper.md`, configured CI to compile the PDF, and corrected JSON export of volume shapes after test failures.
-The submitting author is responsible for verifying algorithmic descriptions against `src/biohub/` and the IEEE manuscript PDF used for this revision.
-`docs/CLEANUP_REPORT.md` records agent-related branch cleanup and a 2026-07-07 history rewrite on `main`; whether other AI tools contributed to earlier commits, `paper/main.tex`, or UI text is not recorded in repository metadata.
+Generative AI in **Cursor** (Cloud Agent / Composer) assisted the `joss-preparation` branch: JOSS documentation review, pytest suites on synthetic ground truth, drafting and revising `paper.md`, author-metadata updates, CI configuration, and a JSON export fix found by tests.
+Technical descriptions in this paper were written from `src/biohub/`, repository docs, and the companion IEEE manuscript; the author verified the public competition score in their own Kaggle account—the agent did not access that account.
+Earlier use of AI tools elsewhere in the project (including commits, `paper/main.tex`, or UI text) has **not** been fully confirmed by the author.
+This disclosure does not assert that all AI-generated text was independently re-validated line by line.
 
 # Acknowledgements
 
 The author thanks the Biohub Cell Tracking During Development organizers and community participants for dataset specifications and leaderboard feedback that informed competition presets in this repository.
-No grant funding is listed in repository metadata.
 
 # References

@@ -5,7 +5,8 @@ message: >-
 type: software
 authors:
   - family-names: Samuel
-    given-names: Tobi-Joshua
+    given-names: Tobi Joshua
+    orcid: 'https://orcid.org/0009-0007-1850-1726'
 repository-code: 'https://github.com/Tobi-joshua/Biohub---Cell-Tracking-During-Development'
 url: 'https://bioapp---cell-tracking-during-development-ezpjtah7icn2tfr8tie4.streamlit.app/'
 license: MIT
@@ -24,6 +25,6 @@ preferred-citation:
     Cell Tracking During Development
   authors:
     - family-names: Samuel
-      given-names: Tobi-Joshua
+      given-names: Tobi Joshua
   year: 2026
-  notes: IEEE-style manuscript in paper/main.tex
+  notes: IEEE-style manuscript in paper/main.tex; JOSS paper.md on branch joss-preparation
