@@ -40,99 +40,88 @@ Biohub Cell Lineage Tracker connects inspection, execution, and export in one do
 
 TrackMate [@tinevez2017trackmate], lineaging pipelines [@amat2014lineage], and deep segmenters [@stringer2021cellpose; @cicek20163dunet] address parts of the problem; scikit-image peaks and Hungarian assignment underpin many classical trackers [@van2014scikit; @kuhn1955hungarian].
 Streamlit enables rapid review UIs [@streamlit2019].
-This repository **builds** an integrated Python 3 stack—`src/biohub/` modules, Streamlit front end, tuning scripts, and notebook builder—around one `Config` and `run_tracking_pipeline` entry point for Biohub Zarr/GEFF data.
+This repository **builds** an integrated Python 3 stack—library modules, Streamlit front end, tuning scripts, and a notebook builder—around one configuration object and a single `run_tracking_pipeline` entry point for Biohub Zarr/GEFF data.
 
 # Software design
 
 ## Problem formulation and configuration
 
-Volumes are stored as uint16 Zarr arrays with shape $(T,Z,Y,X)$ and anisotropic voxel spacing $s_z=1.625\,\mu\mathrm{m}$, $s_y=s_x=0.40625\,\mu\mathrm{m}$ (`SCALE` in `biohub.config`).
+Volumes are stored as uint16 Zarr arrays with shape $(T,Z,Y,X)$ and anisotropic voxel spacing $s_z=1.625\,\mu\mathrm{m}$, $s_y=s_x=0.40625\,\mu\mathrm{m}$.
 Optional training annotations live in GEFF graph directories with sparse centroid labels; a missing label does not imply absence of a cell.
-All hyperparameters—detection thresholds, physical non-maximum suppression radii, linking weights, and division gates—live in a dataclass `Config`, which supports immutable overrides via `copy_with()` and documents a `competition_v4_preset()` used for Biohub Cell Tracking During Development submissions (`EXPERIMENTS.md`).
+Hyperparameters for detection, linking, division gates, and optional competition presets live in a central `Config` type (see `docs/DEVELOPMENT.md` for field-level settings).
+The `competition_v4_preset()` matches the classical submission path documented in `EXPERIMENTS.md`.
 
 ## Detection pipeline
 
-Detection operates per frame in `detect_cells()` (`biohub.detection`).
-Block mean pooling with `xy_ds=4` preserves $Z$ while downsampling $Y$ and $X$ to an approximately isotropic working grid.
-The downsampled volume is preprocessed either with a Gaussian smoother (`smooth_sigma=1.0`) or, when opt-in flags select the `peaks_dog` backend, with a difference-of-Gaussians band-pass (`dog_bandpass`) whose sigmas are converted from micrometers to voxels on the downsampled grid.
-The default Streamlit path and `competition_v4_preset()` use Gaussian smoothing; the DoG front-end is an experimental alternative (`competition_v10_dog_preset()`) kept separate because it changed only the detection stage in internal experiments.
+Detection operates per frame on a laterally downsampled grid: block mean pooling in $Y$ and $X$ preserves full axial resolution while making the search grid approximately isotropic in micrometers.
+The default path Gaussian-smooths the downsampled volume; an optional difference-of-Gaussians band-pass front-end exists for experiments but is not the Streamlit default.
 
-Candidate peaks are obtained with scikit-image `peak_local_max` (or a maximum-filter fallback) on a thresholded map.
-The absolute threshold is the maximum of Otsu’s method and a relative-rise rule $ \tau = b + \alpha (h-b) $, where $b$ is the median intensity, $h$ is a high percentile (`thresh_hi_percentile=99.8`), and $\alpha$ is `thresh_rel` (default 0.30, tunable on the competition path).
-A secondary **dense-cluster pass** (`use_dense_cluster_pass=True`) repeats peak finding with a lower relative threshold and smaller minimum peak distance to recover nearby cells in crowded regions.
-Peaks are mapped back to full resolution, refined by intensity-weighted centroids in local $(Z,YX)$ neighborhoods (`refine_centroid`), and filtered by relative contrast, optional axial floor rules, and border guards that retain only high-scoring border detections.
-Physical non-maximum suppression (`physical_nms`) merges duplicates within `nms_radius_um` (default 2.65 µm), with an optional second pass at tighter radius after dense recovery.
-Per-frame caps discard excess candidates when counts exceed adaptive or hard limits (`max_nodes_per_frame`).
-Adaptive threshold retries (disabled in `competition_v4_preset()`) tighten $\alpha$ when frames exceed density caps.
-Block pooling and physical NMS express distances in micrometers; dual-threshold peaks improve cluster recall without learned segmentation.
+Candidate peaks use scikit-image local maxima (with a fallback filter) on a thresholded map.
+The absolute threshold is the maximum of Otsu’s method and a relative-rise rule $\tau = b + \alpha(h-b)$, where $b$ is the median intensity, $h$ is a high percentile of the smoothed map, and $\alpha$ is a configurable relative coefficient.
+A secondary dense-cluster pass can repeat peak finding at a lower relative threshold to recover nearby cells.
+Peaks are mapped to full resolution, refined by intensity-weighted centroids, filtered by contrast and border rules, and merged by physical non-maximum suppression in micrometers.
+Adaptive threshold retries and per-frame count caps are available but disabled in the competition preset when they conflicted with submission density targets.
+
+Design trade-off: dual-threshold peak finding and physical NMS improve recall in crowded anisotropic volumes without adopting a learned segmenter, at the cost of sensitivity to bright artifacts and parameter tuning.
 
 ## Temporal linking
 
-Consecutive frames are associated in `link_frames()` (`biohub.tracking`) by building a cost matrix on detections expressed in physical coordinates $\mathbf{p} = (z\,s_z, y\,s_y, x\,s_x)$.
-
-When `use_rich_linking=True` (default), the assignment cost is
-$$C_{ij} = d_{ij} + \lambda_m \rho^m_{ij} + \lambda_I f_{ij} + \lambda_N g_{ij},$$
-where $d_{ij}$ is Euclidean distance, $\rho^m_{ij}$ is motion residual relative to the previous displacement of parent $i$, $f_{ij}$ is normalized intensity difference, and $g_{ij}$ compares $k$-nearest-neighbor offset signatures within `neighborhood_radius_um` (default 15 µm, $k=4$).
-Default weights are $\lambda_m=0.20$, $\lambda_I=0.15$, $\lambda_N=0.10$.
-Pairs with $d_{ij} > \texttt{max\_link\_dist\_um}$ (default 11 µm) receive a prohibitive cost before `scipy.optimize.linear_sum_assignment` selects one-to-one matches.
-
-Velocities update along accepted edges; the pipeline streams one time point at a time for low memory use.
-Optional gap closing ($t{-}2\!\to\!t$) and soft orphan pruning exist but are off in `competition_v4_preset()` after internal A/B logs linked them to leaderboard regression.
+Consecutive frames are associated by solving a linear assignment problem on detections expressed in physical coordinates.
+When rich linking is enabled, the cost combines Euclidean distance, a motion residual from the previous displacement, normalized intensity difference, and a neighborhood offset signature; pairs beyond a maximum link distance receive a prohibitive cost.
+The Hungarian algorithm (`scipy.optimize.linear_sum_assignment`) yields one-to-one matches, and velocities update along accepted edges for the next frame.
+The pipeline streams one time point at a time to limit memory on large Zarr volumes.
+Optional gap closing and soft orphan pruning exist but are off in the competition preset after internal experiments linked them to lower public leaderboard scores.
 
 ## Division inference
 
-After primary assignment, unmatched detections in the current frame may become second daughters of a parent that already has exactly one matched child.
-A candidate division must satisfy distance gates (`div_parent_dist_um`, `div_sister_dist_um`), and, when `div_use_midpoint_gate=True`, the parent at $t{-}1$ must lie near the midpoint between sisters in micrometers (`div_midpoint_dist_um`).
-The implementation scores candidates by parent–daughter distance plus a weighted sister separation term; optional symmetry weighting (`div_symmetry_weight`) is zero in the competition preset.
-Divisions appear in exports as nodes with two or more outgoing edges; `division_events()` summarizes parents with multiple daughters.
-
-The rule set limits fan-out and favors symmetric mitoses; atypical geometries remain a limitation.
-
-`run_tracking_pipeline()` (`biohub.analysis`) reads Zarr via Blosc2 or in-memory frame lists, builds Pandas node/edge tables, optionally prunes isolated nodes, and returns an `AnalysisResult` with division statistics.
-Tuning scripts score sparse GEFF proxies when local train data exist.
+After primary assignment, unmatched detections may become second daughters of a parent that already has exactly one matched child.
+Candidates must pass parent–daughter and sister distance gates and, by default, a midpoint gate placing the parent near the sisters’ midpoint in micrometers.
+The rule limits fan-out and favors symmetric mitoses; oblique or overlapping divisions remain a known weakness.
+Post-processing can prune isolated nodes that never participate in an edge.
 
 ## Architecture and interactive application
 
-Libraries under `src/biohub/` cover I/O, detection, tracking, export, and Matplotlib visualization; `app.py`/`app/ui.py` implement Streamlit.
-Seven pages (Home, Dataset, Volume, Pipeline, Detection, Lineage, Exports) load local `train/`/`test` Zarr/GEFF catalogs, synthetic demo data, or uploaded $(T,Z,Y,X)$ NumPy volumes.
-Pipeline runs preview or full sequences; Detection shows overlays, link blends, montages, and GIF export via `build_overlay_gif()`; Lineage renders topology and track timelines with scale bars (`biohub.visualization`).
-`scripts/generate_figures.py` and `paper/main.tex` mirror manuscript figures.
+Core libraries under `src/biohub/` implement I/O, detection, tracking, analysis, export, and Matplotlib visualization; `app.py` hosts Streamlit.
+Seven pages—Home, Dataset, Volume, Pipeline, Detection, Lineage, and Exports—share one pipeline runner.
+Users load local `train/`/`test` Zarr/GEFF catalogs, the bundled synthetic demo, or an uploaded $(T,Z,Y,X)$ NumPy volume; adjust analysis sliders; run preview or full sequences; and download CSV/JSON exports.
+
+Figure @fig:streamlit-ui shows the **Detection** and **Lineage** pages after a pipeline run.
+On Detection, users scrub time and $z$ to review centroid overlays, inter-frame link blends, a temporal montage, and an optional GIF export.
+On Lineage, users inspect the topology graph, a track timeline, and a table of inferred division events—supporting qualitative audit before export.
+The companion IEEE manuscript (`paper/main.tex`) documents the same UI layout in greater figure detail.
+
+![Streamlit Detection and Lineage pages. (a) Detection overlay and inter-frame links. (b) Lineage topology, track timeline, and division-event table. Screenshots extracted from the author’s IEEE manuscript PDF (Fig. 2 panels c–d); the sidebar shows the **Synthetic demo** data source with default analysis sliders. []{label="fig:streamlit-ui"}](figures/joss_streamlit_detection_lineage.png)
 
 ![Processing pipeline from 3D time-lapse volume to exported lineage graph.](figures/pipeline_overview.png)
 
-## Exports and visualization outputs
+## Exports and reproducibility
 
-`biohub.export` flattens lineage results into a single CSV in which each row is tagged `row_type=node` or `row_type=edge`, carrying node coordinates or `(source_id,target_id)` pairs.
-JSON export encodes parallel `nodes` and `edges` arrays plus a `stats` object (volume shape serialized as a list for JSON compatibility).
-Pytest suites on Gaussian-blob phantoms verify detection, linking, divisions, and export round-trips.
+Exports provide a merged CSV (`row_type` node or edge) and a JSON graph with parallel node and edge lists.
+Seven pytest cases on deterministic Gaussian-blob phantoms verify detection, linking, division topology, and export round-trips (`tests/`, `docs/REPRODUCIBLE_EXAMPLE.md`).
+Figure scripts and GitHub Actions on the `joss-preparation` branch compile this paper and run the test suite.
 
-## Limitations and manuscript–code alignment
+## Limitations
 
 Classical peak detection can under-segment dense clusters and over-detect bright structures near tissue boundaries.
-Frame-to-frame Hungarian linking recovers short motion but not long occlusions unless optional gap closing is enabled.
-Division inference may miss oblique or overlapping mitoses.
-`LearnedDetector` defines a hook for pretrained weights but falls back to classical peaks when no checkpoint is supplied; no bundled Cellpose or StarDist models ship with the repository.
-
-The companion IEEE manuscript (`paper/main.tex`; author PDF) describes the default Gaussian peak path; code additionally exposes DoG detection, adaptive thresholds, gap closing, soft pruning, and division symmetry weighting (mostly off in `competition_v4_preset()`).
-IEEE “Future work” items such as watershed splitting are not implemented.
-Zebrafish-style qualitative figures require user-downloaded volumes; train/test Zarr are not redistributed here.
+Greedy frame-to-frame linking does not recover long occlusions unless optional gap closing is enabled.
+Division inference is heuristic.
+A learned-detector hook exists but no pretrained weights ship with the repository.
+The IEEE companion text describes additional planned methods (e.g., watershed splitting) not yet implemented; qualitative zebrafish-style figures require user-downloaded Biohub volumes not redistributed here.
 
 # Research impact statement
 
-Demonstrated research use to date is primarily by the developer on the Biohub Cell Tracking During Development task: the author reports an author-verified **public leaderboard score of 0.659** on the Kaggle-hosted competition (competition metric from the v4/v7 classical preset; documented in `EXPERIMENTS.md`).
-That figure reflects the challenge scoring system—not classification accuracy, independent validation, or comparison against other entrants unless explicitly reported elsewhere.
-Seven automated pytest cases on synthetic Gaussian-blob data verify detection, linking, division inference, and export behaviour separately from competition scoring.
-
-Under current JOSS scope, substantive use by the software author in a research context can support eligibility alongside community-ready materials; independent adoption by other groups remains desirable and is not yet recorded in repository metadata.
-Additional signals include a public Streamlit demo (`README.md`), companion IEEE-format methods text (`paper/main.tex`), reproducible figure scripts, and GitHub Actions that compile this paper and run the test suite on the `joss-preparation` branch.
-No third-party publications citing this release are listed in the repository.
+The developer used this software in the Biohub Cell Tracking During Development challenge on Kaggle.
+The author reports an author-verified **public leaderboard score of 0.659** with the classical v4/v7 preset (`EXPERIMENTS.md`).
+That value is the competition’s public scoring metric—not classification accuracy, independent validation, or evidence of superiority over other methods.
+Seven automated pytest cases verify core pipeline behaviour on synthetic data separately from competition scoring.
+A public Streamlit demo (`README.md`) supports inspection without a local install, and reproducible figure-generation scripts accompany the IEEE-format methods write-up in `paper/main.tex`.
 
 # AI usage disclosure
 
-Generative AI in **Cursor** (Cloud Agent / Composer) assisted the `joss-preparation` branch: JOSS documentation review, pytest suites on synthetic ground truth, drafting and revising `paper.md`, author-metadata updates, CI configuration, and a JSON export fix found by tests.
-Technical descriptions in this paper were written from `src/biohub/`, repository docs, and the companion IEEE manuscript; the author verified the public competition score in their own Kaggle account—the agent did not access that account.
-Earlier use of AI tools elsewhere in the project (including commits, `paper/main.tex`, or UI text) has **not** been fully confirmed by the author.
-This disclosure does not assert that all AI-generated text was independently re-validated line by line.
+Generative AI in **Cursor** (Cloud Agent / Composer) assisted the `joss-preparation` branch: JOSS documentation review, pytest suites, drafting and revising `paper.md`, figure extraction from the author’s IEEE PDF, CI configuration, and a JSON export fix found by tests.
+Technical descriptions draw on `src/biohub/`, repository docs, and the companion IEEE manuscript.
+The author verified the public competition score in their own Kaggle account; the agent did not access that account.
+This disclosure does not state that earlier project work avoided AI tools or that every AI-assisted passage was line-by-line re-validated by the author.
 
 # Acknowledgements
 

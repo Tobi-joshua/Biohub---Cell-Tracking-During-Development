@@ -27,13 +27,17 @@ JOSS expects roughly **six months of public development history** before submiss
 
 **Action:** Continue development on GitHub with dated releases/issues; avoid further history rewrites without noting them in the JOSS pre-review issue.
 
-### Research impact and independent adoption
+### Research impact, JOSS scope, and independent adoption
 
 JOSS 2026 guidance emphasizes **demonstrable research impact**—publications, external use, integrations, or credible near-term significance such as reproducible materials and documented use in a research context.
 
-**Observation:** Primary documented use is **author-led** participation in Biohub Cell Tracking During Development, including an **author-verified public leaderboard score of 0.659** (competition metric; see `EXPERIMENTS.md` and `paper.md`). Seven pytest cases verify pipeline behaviour on synthetic data separately from that score. A public Streamlit demo and IEEE-format companion manuscript are in-repo. **Independent adoption** by other laboratories is desirable but not yet listed in repository metadata.
+**How this maps to `paper.md`:** The Research impact statement stays focused on **actual use** (author’s Kaggle competition work, author-verified public score **0.659**, Streamlit demo, pytest/reproducible materials, IEEE companion text). **Eligibility framing** belongs here in the checklist, not in the paper.
 
-**Impact:** Reviewers may ask for third-party citations, reproduction on real Biohub volumes, or evidence beyond the developer’s own competition work—while acknowledging that substantive author use can count under current JOSS criteria.
+**Author use vs external use:** Substantive use of research software by the developer in a research context (here, the Biohub challenge) can support JOSS eligibility together with community-ready documentation and tests. **Independent adoption** by other groups strengthens the case but is not yet recorded in repository metadata.
+
+**Observation:** Primary documented use is **author-led** participation in Biohub Cell Tracking During Development, including an **author-verified public leaderboard score of 0.659** (competition metric; see `EXPERIMENTS.md` and `paper.md`). Seven pytest cases verify pipeline behaviour on synthetic data separately from that score. A public Streamlit demo and IEEE-format companion manuscript are in-repo.
+
+**Impact:** Reviewers may ask for third-party citations, reproduction on real Biohub volumes, or a public submission permalink.
 
 **Action:** Encourage external users to cite a Zenodo/GitHub release; add factual adoption notes only when they exist.
 
@@ -41,7 +45,11 @@ JOSS 2026 guidance emphasizes **demonstrable research impact**—publications, e
 
 **Observation:** The author verified the **0.659 public leaderboard score** in their Kaggle account. Repository files do **not** yet include a **public submission or notebook permalink** that third parties can open without the author’s account.
 
-**Action:** Add a stable Kaggle submission or notebook URL to `EXPERIMENTS.md`, `paper.md` (Research impact), or the JOSS pre-review issue when available.
+**Action:** Add a stable Kaggle submission or notebook URL to `EXPERIMENTS.md`, the JOSS pre-review issue, or this checklist when available.
+
+### Streamlit UI figure data source (JOSS paper)
+
+**Observation:** `figures/joss_streamlit_detection_lineage.png` is built from IEEE manuscript PDF panels (Detection and Lineage). Visible sidebar state indicates **Synthetic demo** with default analysis sliders. The author should confirm this matches their intended illustration (vs a local Zarr volume) before JOSS submission.
 
 ### Dual paper formats
 
