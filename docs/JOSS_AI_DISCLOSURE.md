@@ -7,7 +7,8 @@ This document supports the **AI usage disclosure** section required in JOSS pape
 | Activity | Tool / context | How it was used | Verification |
 |----------|----------------|-----------------|--------------|
 | JOSS branch implementation | Cursor Cloud Agent (Composer) | Read JOSS documentation, inspected the codebase, added pytest suites on synthetic ground truth, wrote `docs/REPRODUCIBLE_EXAMPLE.md`, drafted `paper.md` / `paper.bib`, added GitHub Actions workflow, fixed JSON export tuple serialization in `src/biohub/export.py` | All tests run locally via `PYTHONPATH=src python3 -m pytest tests/ -v` (7 passed). Paper compiles in CI via Open Journals draft action. |
-| Paper prose | Same agent | Drafted JOSS sections from repository evidence only (README, EXPERIMENTS.md, source modules) | **Author must review** every claim, affiliation, and impact statement before submission. |
+| Paper prose | Same agent | Drafted and revised JOSS `paper.md` from README, EXPERIMENTS.md, `src/biohub/`, and the author-supplied IEEE manuscript PDF | **Author must review** every claim, affiliation, and impact statement before submission. |
+| Paper revision (Oct 2026) | Same agent | Expanded technical sections (detection, linking, division, UI, exports), reconciled IEEE text vs current code, removed editorial placeholders from `paper.md` | Rebuild via GitHub Actions Open Journals draft action on push to `joss-preparation`. |
 | Citations | Same agent | Selected widely used related software papers; bib entries copied/adapted from existing `paper/references.bib` | **Author must confirm** completeness and that no citation invents usage or benchmarks. |
 
 The submitting author should paste a shortened version of the above into `paper.md` or expand it per [JOSS paper guidance](https://joss.readthedocs.io/en/latest/paper.html).
