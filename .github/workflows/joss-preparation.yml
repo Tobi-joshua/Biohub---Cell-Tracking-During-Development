@@ -1,0 +1,57 @@
+# Compile the JOSS paper and run synthetic ground-truth tests.
+# Triggers on the joss-preparation branch and on pull requests targeting main.
+
+name: JOSS preparation
+
+on:
+  push:
+    branches: [joss-preparation, main]
+  pull_request:
+    branches: [main, joss-preparation]
+
+concurrency:
+  group: joss-prep-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest
+
+      - name: Run pytest (synthetic ground truth)
+        run: PYTHONPATH=src python -m pytest tests/ -v
+
+      - name: Syntax check (legacy CI parity)
+        run: |
+          PYTHONPATH=src python -m py_compile app.py app/ui.py
+          PYTHONPATH=src python -m compileall src/biohub
+
+  paper:
+    runs-on: ubuntu-latest
+    needs: test
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build JOSS paper PDF
+        uses: openjournals/openjournals-draft-action@master
+        with:
+          journal: joss
+          paper-path: paper.md
+
+      - name: Upload paper artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: joss-paper-pdf
+          path: paper.pdf
+          if-no-files-found: error
